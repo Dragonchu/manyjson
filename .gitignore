@@ -1,0 +1,64 @@
+# CMake构建目录
+build/
+cmake-build-*/
+
+# 编译输出
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# 可执行文件
+bin/
+lib/
+
+# IDE和编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+
+# 依赖管理
+vcpkg_installed/
+conan/
+third_party/
+
+# 测试覆盖率
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# 文档生成
+docs/html/
+docs/latex/
+
+# 包管理
+*.tar.gz
+*.zip
+*.rar
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db 
