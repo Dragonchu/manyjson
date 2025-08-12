@@ -12,18 +12,68 @@
     .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
     .editor-container { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); padding: 20px; }
     
-    /* JSON Editor Styles */
-    .json-editor { 
-      flex: 1; 
-      width: 100%; 
-      min-height: 400px; 
-      padding: 15px; 
-      border: 1px solid #ddd; 
-      border-radius: 8px; 
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace; 
-      font-size: 14px; 
-      resize: vertical; 
+    /* Code Editor Container */
+    .code-editor-container {
+      flex: 1;
+      position: relative;
+      min-height: 400px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
       background: #fafafa;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 14px;
+      overflow: hidden;
+    }
+    
+    .code-editor-container.dark-theme {
+      background: #1e1e1e;
+      border-color: #333;
+    }
+    
+    /* Textarea (invisible but functional) */
+    .json-editor {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 15px;
+      border: none;
+      background: transparent;
+      color: transparent;
+      caret-color: #007bff;
+      resize: none;
+      outline: none;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: 1.5;
+      white-space: pre;
+      overflow: auto;
+      z-index: 2;
+    }
+    
+    .json-editor.dark-theme {
+      caret-color: #4fc1ff;
+    }
+    
+    /* Syntax highlighting overlay */
+    .syntax-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 15px;
+      pointer-events: none;
+      white-space: pre;
+      line-height: 1.5;
+      overflow: auto;
+      z-index: 1;
+      color: #24292e;
+    }
+    
+    .syntax-overlay.dark-theme {
+      color: #e1e4e8;
     }
     
     /* JSON Viewer Styles */
@@ -55,15 +105,17 @@
     .json-null { color: #6a737d; }
     .json-punctuation { color: #24292e; }
     .json-brace { color: #24292e; font-weight: bold; }
+    .json-comment { color: #6a737d; font-style: italic; }
     
     /* Dark theme syntax colors */
-    .json-viewer.dark-theme .json-key { color: #4fc1ff; }
-    .json-viewer.dark-theme .json-string { color: #9ecbff; }
-    .json-viewer.dark-theme .json-number { color: #ffab70; }
-    .json-viewer.dark-theme .json-boolean { color: #b392f0; }
-    .json-viewer.dark-theme .json-null { color: #959da5; }
-    .json-viewer.dark-theme .json-punctuation { color: #e1e4e8; }
-    .json-viewer.dark-theme .json-brace { color: #e1e4e8; }
+    .dark-theme .json-key { color: #4fc1ff; }
+    .dark-theme .json-string { color: #9ecbff; }
+    .dark-theme .json-number { color: #ffab70; }
+    .dark-theme .json-boolean { color: #b392f0; }
+    .dark-theme .json-null { color: #959da5; }
+    .dark-theme .json-punctuation { color: #e1e4e8; }
+    .dark-theme .json-brace { color: #e1e4e8; }
+    .dark-theme .json-comment { color: #959da5; }
     
     /* Expand/Collapse functionality */
     .json-expandable {
@@ -104,6 +156,35 @@
     .json-error-line {
       background: rgba(220, 53, 69, 0.1);
       border-left: 3px solid #dc3545;
+    }
+    
+    /* Line numbers */
+    .line-numbers {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 40px;
+      height: 100%;
+      background: #f8f9fa;
+      border-right: 1px solid #e9ecef;
+      padding: 15px 5px;
+      font-size: 12px;
+      color: #6c757d;
+      text-align: right;
+      line-height: 1.5;
+      user-select: none;
+      z-index: 0;
+    }
+    
+    .line-numbers.dark-theme {
+      background: #2d2d2d;
+      border-color: #444;
+      color: #888;
+    }
+    
+    .code-editor-container.with-line-numbers .json-editor,
+    .code-editor-container.with-line-numbers .syntax-overlay {
+      padding-left: 55px;
     }
     
     .status { margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 14px; }
@@ -151,6 +232,21 @@
       padding: 6px 12px;
       font-size: 12px;
     }
+    
+    .editor-options {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    
+    .editor-options label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -185,11 +281,34 @@
         <button id="viewModeBtn">预览模式</button>
       </div>
       
-      <textarea 
-        id="jsonEditor" 
-        class="json-editor" 
-        placeholder="在此输入或编辑 JSON 数据...&#10;&#10;示例：&#10;{&#10;  &quot;name&quot;: &quot;示例&quot;,&#10;  &quot;version&quot;: &quot;1.0.0&quot;,&#10;  &quot;items&quot;: [1, 2, 3]&#10;}"
-      ></textarea>
+      <div class="editor-options" id="editorOptions">
+        <label>
+          <input type="checkbox" id="showLineNumbers" checked>
+          显示行号
+        </label>
+        <label>
+          <input type="checkbox" id="enableSyntaxHighlight" checked>
+          语法高亮
+        </label>
+      </div>
+      
+      <div id="codeEditorContainer" class="code-editor-container with-line-numbers">
+        <div id="lineNumbers" class="line-numbers"></div>
+        <div id="syntaxOverlay" class="syntax-overlay"></div>
+        <textarea 
+          id="jsonEditor" 
+          class="json-editor"
+          spellcheck="false"
+          placeholder="在此输入或编辑 JSON 数据...
+
+示例：
+{
+  &quot;name&quot;: &quot;示例&quot;,
+  &quot;version&quot;: &quot;1.0.0&quot;,
+  &quot;items&quot;: [1, 2, 3]
+}"
+        ></textarea>
+      </div>
       
       <div id="jsonViewer" class="json-viewer" style="display: none;"></div>
       

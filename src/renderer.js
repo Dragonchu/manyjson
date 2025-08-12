@@ -1,11 +1,13 @@
 /*
   渲染进程脚本：JSON 文件编辑器功能实现
-  支持语法高亮、展开折叠、错误提示等高级功能
+  支持编辑模式实时语法高亮、展开折叠、错误提示等高级功能
 */
 
 let currentFilePath = null;
 let isDarkTheme = false;
 let isViewMode = false;
+let showLineNumbers = true;
+let enableSyntaxHighlight = true;
 
 // 显示应用信息
 const appInfoEl = document.getElementById('appInfo');
@@ -16,6 +18,12 @@ if (window.appInfo && appInfoEl) {
 // 获取 DOM 元素
 const jsonEditor = document.getElementById('jsonEditor');
 const jsonViewer = document.getElementById('jsonViewer');
+const syntaxOverlay = document.getElementById('syntaxOverlay');
+const lineNumbers = document.getElementById('lineNumbers');
+const codeEditorContainer = document.getElementById('codeEditorContainer');
+const editorOptions = document.getElementById('editorOptions');
+const showLineNumbersCheckbox = document.getElementById('showLineNumbers');
+const enableSyntaxHighlightCheckbox = document.getElementById('enableSyntaxHighlight');
 const fileInfo = document.getElementById('fileInfo');
 const status = document.getElementById('status');
 const newBtn = document.getElementById('newBtn');
@@ -53,7 +61,89 @@ function updateFileInfo(filePath = null) {
   }
 }
 
-// JSON 语法高亮
+// 编辑器语法高亮（简化版，用于编辑模式）
+function highlightJsonText(text) {
+  if (!text) return '';
+  
+  // 使用更智能的方法来避免重复高亮
+  const tokens = [];
+  let currentPos = 0;
+  
+  // 分词器 - 识别不同的token类型
+  const tokenPatterns = [
+    { type: 'key', regex: /"([^"\\]|\\.)*"(?=\s*:)/ },
+    { type: 'string', regex: /"([^"\\]|\\.)*"/ },
+    { type: 'number', regex: /-?\d+\.?\d*([eE][+-]?\d+)?/ },
+    { type: 'boolean', regex: /\b(true|false)\b/ },
+    { type: 'null', regex: /\bnull\b/ },
+    { type: 'brace', regex: /[{}\[\]]/ },
+    { type: 'punctuation', regex: /[,:]/ },
+    { type: 'whitespace', regex: /\s+/ },
+    { type: 'other', regex: /./ }
+  ];
+  
+  while (currentPos < text.length) {
+    let matched = false;
+    
+    for (const pattern of tokenPatterns) {
+      const regex = new RegExp('^' + pattern.regex.source);
+      const match = text.slice(currentPos).match(regex);
+      
+      if (match) {
+        const tokenText = match[0];
+        tokens.push({
+          type: pattern.type,
+          text: tokenText,
+          start: currentPos,
+          end: currentPos + tokenText.length
+        });
+        currentPos += tokenText.length;
+        matched = true;
+        break;
+      }
+    }
+    
+    if (!matched) {
+      currentPos++;
+    }
+  }
+  
+  // 生成高亮HTML
+  let result = '';
+  tokens.forEach(token => {
+    const escapedText = escapeHtml(token.text);
+    
+    switch (token.type) {
+      case 'key':
+        result += `<span class="json-key">${escapedText}</span>`;
+        break;
+      case 'string':
+        result += `<span class="json-string">${escapedText}</span>`;
+        break;
+      case 'number':
+        result += `<span class="json-number">${escapedText}</span>`;
+        break;
+      case 'boolean':
+        result += `<span class="json-boolean">${escapedText}</span>`;
+        break;
+      case 'null':
+        result += `<span class="json-null">${escapedText}</span>`;
+        break;
+      case 'brace':
+        result += `<span class="json-brace">${escapedText}</span>`;
+        break;
+      case 'punctuation':
+        result += `<span class="json-punctuation">${escapedText}</span>`;
+        break;
+      default:
+        result += escapedText;
+    }
+  });
+  
+  return result;
+}
+
+// JSON 语法高亮（用于预览模式）
 function highlightJson(jsonString, indent = 0) {
   try {
     const obj = JSON.parse(jsonString);
@@ -157,6 +247,47 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// 生成行号
+function generateLineNumbers(text) {
+  const lines = text.split('\n');
+  const lineCount = lines.length;
+  let html = '';
+  
+  for (let i = 1; i <= lineCount; i++) {
+    html += i + '\n';
+  }
+  
+  return html;
+}
+
+// 更新编辑器语法高亮
+function updateEditorHighlight() {
+  if (!enableSyntaxHighlight || isViewMode) return;
+  
+  const text = jsonEditor.value;
+  
+  if (text) {
+    syntaxOverlay.innerHTML = highlightJsonText(text);
+  } else {
+    syntaxOverlay.innerHTML = '';
+  }
+  
+  // 更新行号
+  if (showLineNumbers) {
+    lineNumbers.innerHTML = generateLineNumbers(text || '\n');
+  }
+}
+
+// 同步滚动
+function syncScroll() {
+  syntaxOverlay.scrollTop = jsonEditor.scrollTop;
+  syntaxOverlay.scrollLeft = jsonEditor.scrollLeft;
+  
+  if (showLineNumbers) {
+    lineNumbers.scrollTop = jsonEditor.scrollTop;
+  }
+}
+
 // 切换展开/折叠
 function toggleExpand(elementId) {
   const element = document.getElementById(elementId);
@@ -220,16 +351,45 @@ function switchMode(mode) {
   isViewMode = mode === 'view';
   
   if (isViewMode) {
-    jsonEditor.style.display = 'none';
+    codeEditorContainer.style.display = 'none';
     jsonViewer.style.display = 'block';
+    editorOptions.style.display = 'none';
     editModeBtn.classList.remove('active');
     viewModeBtn.classList.add('active');
     updateJsonViewer();
   } else {
-    jsonEditor.style.display = 'block';
+    codeEditorContainer.style.display = 'block';
     jsonViewer.style.display = 'none';
+    editorOptions.style.display = 'flex';
     editModeBtn.classList.add('active');
     viewModeBtn.classList.remove('active');
+    updateEditorHighlight();
+  }
+}
+
+// 切换行号显示
+function toggleLineNumbers() {
+  showLineNumbers = showLineNumbersCheckbox.checked;
+  
+  if (showLineNumbers) {
+    codeEditorContainer.classList.add('with-line-numbers');
+    lineNumbers.style.display = 'block';
+  } else {
+    codeEditorContainer.classList.remove('with-line-numbers');
+    lineNumbers.style.display = 'none';
+  }
+  
+  updateEditorHighlight();
+}
+
+// 切换语法高亮
+function toggleSyntaxHighlight() {
+  enableSyntaxHighlight = enableSyntaxHighlightCheckbox.checked;
+  
+  if (enableSyntaxHighlight) {
+    updateEditorHighlight();
+  } else {
+    syntaxOverlay.innerHTML = escapeHtml(jsonEditor.value);
   }
 }
 
@@ -241,23 +401,27 @@ function toggleTheme() {
     document.body.style.background = '#1e1e1e';
     document.body.style.color = '#d4d4d4';
     jsonViewer.classList.add('dark-theme');
-    jsonEditor.style.background = '#1e1e1e';
-    jsonEditor.style.color = '#d4d4d4';
-    jsonEditor.style.borderColor = '#333';
+    codeEditorContainer.classList.add('dark-theme');
+    syntaxOverlay.classList.add('dark-theme');
+    lineNumbers.classList.add('dark-theme');
+    jsonEditor.classList.add('dark-theme');
     themeBtn.textContent = '浅色主题';
   } else {
     document.body.style.background = '#f5f5f7';
     document.body.style.color = '#1f1f1f';
     jsonViewer.classList.remove('dark-theme');
-    jsonEditor.style.background = '#fafafa';
-    jsonEditor.style.color = '#1f1f1f';
-    jsonEditor.style.borderColor = '#ddd';
+    codeEditorContainer.classList.remove('dark-theme');
+    syntaxOverlay.classList.remove('dark-theme');
+    lineNumbers.classList.remove('dark-theme');
+    jsonEditor.classList.remove('dark-theme');
     themeBtn.textContent = '深色主题';
   }
   
-  // 如果在预览模式，更新视图
+  // 更新高亮显示
   if (isViewMode) {
     updateJsonViewer();
+  } else {
+    updateEditorHighlight();
   }
 }
 
@@ -315,6 +479,8 @@ newBtn.addEventListener('click', () => {
   updateFileInfo(null);
   if (isViewMode) {
     updateJsonViewer();
+  } else {
+    updateEditorHighlight();
   }
   showStatus('已创建新文件');
 });
@@ -327,6 +493,8 @@ openBtn.addEventListener('click', async () => {
       updateFileInfo(result.filePath);
       if (isViewMode) {
         updateJsonViewer();
+      } else {
+        updateEditorHighlight();
       }
       showStatus(`成功打开文件: ${result.filePath}`);
     } else {
@@ -382,6 +550,8 @@ formatBtn.addEventListener('click', () => {
     jsonEditor.value = JSON.stringify(jsonData, null, 2);
     if (isViewMode) {
       updateJsonViewer();
+    } else {
+      updateEditorHighlight();
     }
     showStatus('JSON 格式化完成');
   } catch (error) {
@@ -414,12 +584,20 @@ collapseAllBtn.addEventListener('click', collapseAll);
 editModeBtn.addEventListener('click', () => switchMode('edit'));
 viewModeBtn.addEventListener('click', () => switchMode('view'));
 
-// 实时更新预览（当在预览模式时）
+showLineNumbersCheckbox.addEventListener('change', toggleLineNumbers);
+enableSyntaxHighlightCheckbox.addEventListener('change', toggleSyntaxHighlight);
+
+// 实时更新编辑器高亮
 jsonEditor.addEventListener('input', () => {
   if (isViewMode) {
     updateJsonViewer();
+  } else {
+    updateEditorHighlight();
   }
 });
+
+// 同步滚动
+jsonEditor.addEventListener('scroll', syncScroll);
 
 // 键盘快捷键支持
 document.addEventListener('keydown', (e) => {
@@ -460,5 +638,6 @@ document.addEventListener('keydown', (e) => {
 // 全局函数，供 HTML onclick 使用
 window.toggleExpand = toggleExpand;
 
-// 初始化时设置默认主题
+// 初始化
 themeBtn.textContent = '深色主题';
+updateEditorHighlight();
