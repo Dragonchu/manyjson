@@ -8,8 +8,9 @@ declare module '*.vue' {
 
 interface Window {
   electronAPI: {
-    writeJsonFile: (filePath: string, content: string) => Promise<void>
-    showOpenDialog: (options: any) => Promise<any>
-    showSaveDialog: (options: any) => Promise<any>
+    writeJsonFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>
+    showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
+    showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath?: string }>
+    deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
   }
 }

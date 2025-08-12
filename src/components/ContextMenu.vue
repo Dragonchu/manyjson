@@ -5,26 +5,49 @@
     :style="{ left: position.x + 'px', top: position.y + 'px' }"
     v-show="isVisible"
   >
-    <div class="context-menu-item" @click="handleViewSchema">View Schema</div>
-    <div class="context-menu-item" @click="handleEditSchema">Edit Schema</div>
-    <div class="context-menu-separator"></div>
-    <div class="context-menu-item" @click="handleDeleteSchema">Delete Schema</div>
+    <!-- Schema context menu items -->
+    <template v-if="contextType === 'schema'">
+      <div class="context-menu-item" @click="handleViewSchema">View Schema</div>
+      <div class="context-menu-item" @click="handleEditSchema">Edit Schema</div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" @click="handleDeleteSchema">Delete Schema</div>
+    </template>
+    
+    <!-- File context menu items -->
+    <template v-if="contextType === 'file'">
+      <div class="context-menu-item" @click="handleViewFile">View File</div>
+      <div class="context-menu-item" @click="handleEditFile">Edit File</div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" @click="handleDeleteFile">Delete File</div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useAppStore, type SchemaInfo } from '@/stores/app'
+import { useAppStore, type SchemaInfo, type JsonFile } from '@/stores/app'
 
 const appStore = useAppStore()
 const contextMenuRef = ref<HTMLElement>()
 const isVisible = ref(false)
 const position = ref({ x: 0, y: 0 })
 const currentSchema = ref<SchemaInfo | null>(null)
+const currentFile = ref<JsonFile | null>(null)
+const contextType = ref<'schema' | 'file'>('schema')
 
 function showContextMenu(event: CustomEvent) {
-  const { event: mouseEvent, schema } = event.detail
-  currentSchema.value = schema
+  const { event: mouseEvent, schema, file, type } = event.detail
+  
+  if (type === 'schema') {
+    currentSchema.value = schema
+    currentFile.value = null
+    contextType.value = 'schema'
+  } else if (type === 'file') {
+    currentFile.value = file
+    currentSchema.value = null
+    contextType.value = 'file'
+  }
+  
   position.value = { x: mouseEvent.clientX, y: mouseEvent.clientY }
   isVisible.value = true
 }
@@ -32,6 +55,7 @@ function showContextMenu(event: CustomEvent) {
 function hideContextMenu() {
   isVisible.value = false
   currentSchema.value = null
+  currentFile.value = null
 }
 
 function handleViewSchema() {
@@ -50,10 +74,43 @@ function handleEditSchema() {
   hideContextMenu()
 }
 
-function handleDeleteSchema() {
+async function handleDeleteSchema() {
   if (currentSchema.value) {
-    appStore.showStatus(`Delete schema functionality coming soon`, 'info')
-    // TODO: Implement schema deletion
+    // Show confirmation dialog
+    const confirmed = confirm(`Are you sure you want to delete the schema "${currentSchema.value.name}"? This action cannot be undone.`)
+    
+    if (confirmed) {
+      await appStore.deleteSchema(currentSchema.value)
+    }
+  }
+  hideContextMenu()
+}
+
+function handleViewFile() {
+  if (currentFile.value) {
+    appStore.setCurrentJsonFile(currentFile.value)
+    appStore.showStatus(`Viewing file: ${currentFile.value.name}`, 'info')
+  }
+  hideContextMenu()
+}
+
+function handleEditFile() {
+  if (currentFile.value) {
+    appStore.setCurrentJsonFile(currentFile.value)
+    appStore.setEditMode(true)
+    appStore.showStatus(`Editing file: ${currentFile.value.name}`, 'info')
+  }
+  hideContextMenu()
+}
+
+async function handleDeleteFile() {
+  if (currentFile.value) {
+    // Show confirmation dialog
+    const confirmed = confirm(`Are you sure you want to delete the file "${currentFile.value.name}"? This action cannot be undone.`)
+    
+    if (confirmed) {
+      await appStore.deleteJsonFile(currentFile.value)
+    }
   }
   hideContextMenu()
 }
