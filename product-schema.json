@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "product-schema",
+  "title": "Product Schema",
+  "description": "Schema for product data validation",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^PRD-[0-9]{6}$",
+      "description": "Product ID in format PRD-XXXXXX"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Product title"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Product description"
+    },
+    "price": {
+      "type": "number",
+      "minimum": 0,
+      "multipleOf": 0.01,
+      "description": "Product price"
+    },
+    "currency": {
+      "type": "string",
+      "enum": ["USD", "EUR", "GBP", "JPY", "CNY"],
+      "description": "Currency code"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["electronics", "clothing", "books", "home", "sports"],
+      "description": "Product category"
+    },
+    "inStock": {
+      "type": "boolean",
+      "description": "Whether the product is in stock"
+    },
+    "specifications": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["id", "title", "price", "currency", "category"],
+  "additionalProperties": false
+}

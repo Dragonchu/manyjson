@@ -1,911 +1,1386 @@
 /*
-  Enhanced JSON Editor with Advanced Features
-  - Fixed-width line numbers with perfect alignment
-  - Intelligent inline error detection with tooltips
-  - Dark theme by default with high-contrast colors
-  - Smooth scrolling and smart folding
-  - Full mobile responsiveness
+  JSON Schema Manager - Three Column Layout
+  - Left Panel: Schema management with tree structure
+  - Middle Panel: JSON files associated with selected schema
+  - Right Panel: JSON content viewer with validation
 */
 
-let currentFilePath = null;
-let isDarkTheme = true; // Default to dark theme
-let isViewMode = false;
-let showLineNumbers = true;
-let autoFormat = true;
-let smartFolding = true;
-let errorMarkers = [];
+// Global state
+let currentSchema = null;
+let currentJsonFile = null;
+let schemaData = {};
+let jsonFiles = {};
+let validator = null;
+let isEditMode = false;
+let originalJsonContent = null;
 
-// App info display
-const appInfoEl = document.getElementById('appInfo');
-if (window.appInfo && appInfoEl) {
-  appInfoEl.textContent = `${window.appInfo.name} v${window.appInfo.version}`;
-}
-
-// DOM elements
-const jsonEditor = document.getElementById('jsonEditor');
+// DOM Elements
+const schemaTree = document.getElementById('schemaTree');
+const jsonFilesList = document.getElementById('jsonFilesList');
 const jsonViewer = document.getElementById('jsonViewer');
-const syntaxOverlay = document.getElementById('syntaxOverlay');
-const errorOverlay = document.getElementById('errorOverlay');
-const lineNumbers = document.getElementById('lineNumbers');
-const codeEditorContainer = document.getElementById('codeEditorContainer');
-const editorOptions = document.getElementById('editorOptions');
-const showLineNumbersCheckbox = document.getElementById('showLineNumbers');
-const autoFormatCheckbox = document.getElementById('autoFormat');
-const smartFoldingCheckbox = document.getElementById('smartFolding');
-const fileInfo = document.getElementById('fileInfo');
-const status = document.getElementById('status');
+const jsonEditor = document.getElementById('jsonEditor');
+const schemaInfo = document.getElementById('schemaInfo');
+const rightPanelTitle = document.getElementById('rightPanelTitle');
+const validationStatus = document.getElementById('validationStatus');
+const statusBar = document.getElementById('statusBar');
+const contextMenu = document.getElementById('contextMenu');
 
 // Buttons
-const newBtn = document.getElementById('newBtn');
-const openBtn = document.getElementById('openBtn');
-const saveBtn = document.getElementById('saveBtn');
-const formatBtn = document.getElementById('formatBtn');
-const validateBtn = document.getElementById('validateBtn');
-const themeBtn = document.getElementById('themeBtn');
-const copyBtn = document.getElementById('copyBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const expandAllBtn = document.getElementById('expandAllBtn');
-const collapseAllBtn = document.getElementById('collapseAllBtn');
-const clearBtn = document.getElementById('clearBtn');
+const addSchemaBtn = document.getElementById('addSchemaBtn');
+const refreshBtn = document.getElementById('refreshBtn');
+const copyJsonBtn = document.getElementById('copyJsonBtn');
 const editModeBtn = document.getElementById('editModeBtn');
-const viewModeBtn = document.getElementById('viewModeBtn');
+const saveJsonBtn = document.getElementById('saveJsonBtn');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
 
-// Enhanced status display with animations
-function showStatus(message, type = 'success', duration = 3000) {
-  status.textContent = message;
-  status.className = `status ${type}`;
-  status.style.display = 'block';
-  status.style.opacity = '0';
-  status.style.transform = 'translateY(-10px)';
-  
-  // Animate in
-  requestAnimationFrame(() => {
-    status.style.transition = 'all 0.3s ease';
-    status.style.opacity = '1';
-    status.style.transform = 'translateY(0)';
-  });
-  
-  // Auto hide
-  setTimeout(() => {
-    status.style.opacity = '0';
-    status.style.transform = 'translateY(-10px)';
-    setTimeout(() => {
-      status.style.display = 'none';
-    }, 300);
-  }, duration);
-}
-
-// File info update
-function updateFileInfo(filePath = null) {
-  currentFilePath = filePath;
-  if (filePath) {
-    const fileName = filePath.split('/').pop() || filePath.split('\\').pop();
-    fileInfo.innerHTML = `<strong>Current file:</strong> ${fileName} <span class="muted">(${filePath})</span>`;
-  } else {
-    fileInfo.innerHTML = '<strong>Status:</strong> <span class="muted">New unsaved file</span>';
+// Initialize the application
+async function initializeApp() {
+  try {
+    // Initialize a simple JSON Schema validator
+    // Since AJV is not available in the sandboxed environment, 
+    // we'll create a basic validator for demonstration
+    validator = createBasicValidator();
+    
+    await loadSchemas();
+    await loadJsonFiles();
+    renderSchemaTree();
+    setupEventListeners();
+    showStatus('Application initialized successfully', 'success');
+  } catch (error) {
+    console.error('Failed to initialize app:', error);
+    showStatus('Failed to initialize application', 'error');
   }
 }
 
-// Enhanced JSON tokenizer with error detection
-function tokenizeJson(text) {
-  const tokens = [];
-  const errors = [];
-  let currentPos = 0;
-  let line = 1;
-  let column = 1;
+// Create a basic JSON Schema validator for demonstration
+function createBasicValidator() {
+  return {
+    compile: function(schema) {
+      return function validate(data) {
+        const errors = [];
+        validateObject(data, schema, '', errors);
+        validate.errors = errors;
+        return errors.length === 0;
+      };
+    }
+  };
+}
+
+// Basic validation function
+function validateObject(data, schema, path, errors) {
+  if (!schema || typeof schema !== 'object') return;
   
-  const tokenPatterns = [
-    { type: 'key', regex: /"([^"\\]|\\.)*"(?=\s*:)/, priority: 1 },
-    { type: 'string', regex: /"([^"\\]|\\.)*"/, priority: 2 },
-    { type: 'number', regex: /-?\d+\.?\d*([eE][+-]?\d+)?/, priority: 3 },
-    { type: 'boolean', regex: /\b(true|false)\b/, priority: 4 },
-    { type: 'null', regex: /\bnull\b/, priority: 5 },
-    { type: 'brace', regex: /[{}\[\]]/, priority: 6 },
-    { type: 'punctuation', regex: /[,:]/, priority: 7 },
-    { type: 'whitespace', regex: /\s+/, priority: 8 },
-    { type: 'comment', regex: /\/\/.*$|\/\*[\s\S]*?\*\//, priority: 9 },
-    { type: 'error', regex: /./, priority: 10 }
-  ];
+  // Check required fields
+  if (schema.required && Array.isArray(schema.required)) {
+    for (const field of schema.required) {
+      if (!data || !(field in data)) {
+        errors.push({
+          keyword: 'required',
+          instancePath: path,
+          params: { missingProperty: field },
+          message: `should have required property '${field}'`
+        });
+      }
+    }
+  }
   
-  while (currentPos < text.length) {
-    let matched = false;
-    
-    // Sort patterns by priority
-    const sortedPatterns = tokenPatterns.sort((a, b) => a.priority - b.priority);
-    
-    for (const pattern of sortedPatterns) {
-      const regex = new RegExp('^' + pattern.regex.source, pattern.regex.flags);
-      const match = text.slice(currentPos).match(regex);
+  // Check properties
+  if (schema.properties && data && typeof data === 'object') {
+    for (const [key, value] of Object.entries(data)) {
+      const fieldPath = path ? `${path}/${key}` : `/${key}`;
+      const fieldSchema = schema.properties[key];
       
-      if (match) {
-        const tokenText = match[0];
-        const token = {
-          type: pattern.type,
-          text: tokenText,
-          start: currentPos,
-          end: currentPos + tokenText.length,
-          line: line,
-          column: column
-        };
-        
-        // Check for specific JSON syntax errors
-        if (pattern.type === 'error' && !/\s/.test(tokenText)) {
-          errors.push({
-            message: `Unexpected character '${tokenText}'`,
-            line: line,
-            column: column,
-            start: currentPos,
-            end: currentPos + tokenText.length
-          });
-        }
-        
-        tokens.push(token);
-        
-        // Update position tracking
-        for (let i = 0; i < tokenText.length; i++) {
-          if (tokenText[i] === '\n') {
-            line++;
-            column = 1;
-          } else {
-            column++;
+      if (fieldSchema) {
+        // Type validation
+        if (fieldSchema.type) {
+          const actualType = getDataType(value);
+          if (actualType !== fieldSchema.type) {
+            errors.push({
+              keyword: 'type',
+              instancePath: fieldPath,
+              schema: fieldSchema.type,
+              data: value,
+              message: `should be ${fieldSchema.type}`
+            });
           }
         }
         
-        currentPos += tokenText.length;
-        matched = true;
-        break;
-      }
-    }
-    
-    if (!matched) {
-      currentPos++;
-      column++;
-    }
-  }
-  
-  return { tokens, errors };
-}
-
-// Advanced JSON validation with detailed error reporting
-function validateJsonWithErrors(text) {
-  if (!text.trim()) {
-    return { valid: true, errors: [] };
-  }
-  
-  try {
-    JSON.parse(text);
-    return { valid: true, errors: [] };
-  } catch (error) {
-    const errors = [];
-    const lines = text.split('\n');
-    
-    // Parse error message for line/column info
-    const match = error.message.match(/at position (\d+)/);
-    if (match) {
-      const position = parseInt(match[1]);
-      let currentPos = 0;
-      let line = 1;
-      let column = 1;
-      
-      for (let i = 0; i < position && i < text.length; i++) {
-        if (text[i] === '\n') {
-          line++;
-          column = 1;
-        } else {
-          column++;
+        // String validation
+        if (fieldSchema.type === 'string' && typeof value === 'string') {
+          if (fieldSchema.minLength && value.length < fieldSchema.minLength) {
+            errors.push({
+              keyword: 'minLength',
+              instancePath: fieldPath,
+              schema: fieldSchema.minLength,
+              data: value,
+              message: `should NOT be shorter than ${fieldSchema.minLength} characters`
+            });
+          }
+          
+          if (fieldSchema.format === 'email' && !isValidEmail(value)) {
+            errors.push({
+              keyword: 'format',
+              instancePath: fieldPath,
+              schema: 'email',
+              data: value,
+              message: 'should match format "email"'
+            });
+          }
         }
-        currentPos++;
+        
+        // Number validation
+        if (fieldSchema.type === 'number' && typeof value === 'number') {
+          if (fieldSchema.minimum !== undefined && value < fieldSchema.minimum) {
+            errors.push({
+              keyword: 'minimum',
+              instancePath: fieldPath,
+              schema: fieldSchema.minimum,
+              data: value,
+              message: `should be >= ${fieldSchema.minimum}`
+            });
+          }
+        }
+        
+        // Recursive validation for objects
+        if (fieldSchema.type === 'object' && typeof value === 'object') {
+          validateObject(value, fieldSchema, fieldPath, errors);
+        }
+      } else if (schema.additionalProperties === false) {
+        // Extra field validation
+        errors.push({
+          keyword: 'additionalProperties',
+          instancePath: path,
+          params: { additionalProperty: key },
+          message: 'should NOT have additional properties'
+        });
       }
-      
-      errors.push({
-        message: error.message,
-        line: line,
-        column: column,
-        start: position,
-        end: Math.min(position + 10, text.length)
-      });
-    } else {
-      // Fallback error
-      errors.push({
-        message: error.message,
-        line: 1,
-        column: 1,
-        start: 0,
-        end: Math.min(50, text.length)
-      });
     }
-    
-    return { valid: false, errors };
   }
 }
 
-// Generate line numbers with fixed width
-function generateLineNumbers(text) {
-  const lines = text.split('\n');
-  const lineCount = lines.length;
-  const maxDigits = lineCount.toString().length;
-  let html = '';
-  
-  for (let i = 1; i <= lineCount; i++) {
-    const lineNum = i.toString().padStart(maxDigits, ' ');
-    html += lineNum + '\n';
+// Helper function to get data type
+function getDataType(value) {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+// Simple email validation
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+// Load all schema files
+async function loadSchemas() {
+  try {
+    // In a real application, this would load from file system
+    // For demo purposes, we'll use predefined schemas
+    schemaData = {
+      'user-schema': {
+        name: 'User Schema',
+        path: 'user-schema.json',
+        content: await loadJsonFile('user-schema.json'),
+        folder: 'Users'
+      },
+      'product-schema': {
+        name: 'Product Schema', 
+        path: 'product-schema.json',
+        content: await loadJsonFile('product-schema.json'),
+        folder: 'Products'
+      }
+    };
+  } catch (error) {
+    console.error('Failed to load schemas:', error);
+    schemaData = {};
   }
+}
+
+// Load all JSON files and associate with schemas
+async function loadJsonFiles() {
+  try {
+    jsonFiles = {
+      'user-schema': [
+        {
+          name: 'user-data-1.json',
+          path: 'user-data-1.json',
+          content: await loadJsonFile('user-data-1.json'),
+          valid: null
+        },
+        {
+          name: 'user-data-invalid.json', 
+          path: 'user-data-invalid.json',
+          content: await loadJsonFile('user-data-invalid.json'),
+          valid: null
+        },
+        {
+          name: 'demo-data.json',
+          path: 'demo-data.json', 
+          content: await loadJsonFile('demo-data.json'),
+          valid: null
+        }
+      ],
+      'product-schema': [
+        {
+          name: 'product-data-1.json',
+          path: 'product-data-1.json',
+          content: await loadJsonFile('product-data-1.json'),
+          valid: null
+        },
+        {
+          name: 'test-data.json',
+          path: 'test-data.json',
+          content: await loadJsonFile('test-data.json'), 
+          valid: null
+        }
+      ]
+    };
+    
+    // Validate all JSON files against their schemas
+    await validateAllFiles();
+  } catch (error) {
+    console.error('Failed to load JSON files:', error);
+    jsonFiles = {};
+  }
+}
+
+// Load a JSON file (simulated file system access)
+async function loadJsonFile(filename) {
+  try {
+    console.log(`Attempting to load file: ${filename}`);
+    
+    // In Electron, we would use fs.readFile
+    // For demo, we'll simulate loading from the actual files
+    if (window.electronAPI && window.electronAPI.readFile) {
+      const result = await window.electronAPI.readFile(filename);
+      console.log(`Loaded ${filename} via electronAPI:`, result);
+      return result;
+    }
+    
+    // Fallback: fetch from current directory
+    const response = await fetch(filename);
+    if (!response.ok) {
+      throw new Error(`Failed to load ${filename}: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    console.log(`Loaded ${filename} via fetch:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Failed to load ${filename}:`, error);
+    return null;
+  }
+}
+
+// Validate all JSON files against their associated schemas
+async function validateAllFiles() {
+  if (!validator) {
+    console.log('No validator available');
+    return;
+  }
+  
+  for (const schemaId in jsonFiles) {
+    const schema = schemaData[schemaId];
+    if (!schema || !schema.content) {
+      console.log(`No schema found for ${schemaId}`);
+      continue;
+    }
+    
+    console.log(`Validating files for schema: ${schemaId}`);
+    const compiledSchema = validator.compile(schema.content);
+    
+    for (const jsonFile of jsonFiles[schemaId]) {
+      if (jsonFile.content) {
+        console.log(`Validating file: ${jsonFile.name}`);
+        jsonFile.valid = compiledSchema(jsonFile.content);
+        
+        if (!jsonFile.valid) {
+          jsonFile.errors = compiledSchema.errors;
+          jsonFile.analyzedErrors = analyzeValidationErrors(compiledSchema.errors, schema.content, jsonFile.content);
+          console.log(`File ${jsonFile.name} has ${jsonFile.errors.length} errors:`, jsonFile.errors);
+        } else {
+          jsonFile.errors = null;
+          jsonFile.analyzedErrors = null;
+          console.log(`File ${jsonFile.name} is valid`);
+        }
+      } else {
+        console.log(`File ${jsonFile.name} has no content`);
+        jsonFile.valid = null;
+        jsonFile.errors = null;
+        jsonFile.analyzedErrors = null;
+      }
+    }
+  }
+}
+
+// Intelligent validation error analyzer
+function analyzeValidationErrors(ajvErrors, schema, data) {
+  const analysis = {
+    summary: {
+      total: ajvErrors.length,
+      critical: 0,
+      warnings: 0
+    },
+    categories: {
+      missingFields: [],
+      extraFields: [],
+      typeMismatches: [],
+      otherErrors: []
+    }
+  };
+
+  for (const error of ajvErrors) {
+    const analyzedError = analyzeIndividualError(error, schema, data);
+    
+    // Categorize errors
+    switch (analyzedError.category) {
+      case 'missing':
+        analysis.categories.missingFields.push(analyzedError);
+        analysis.summary.critical++;
+        break;
+      case 'extra':
+        analysis.categories.extraFields.push(analyzedError);
+        analysis.summary.warnings++;
+        break;
+      case 'type':
+        analysis.categories.typeMismatches.push(analyzedError);
+        analysis.summary.critical++;
+        break;
+      default:
+        analysis.categories.otherErrors.push(analyzedError);
+        analysis.summary.critical++;
+        break;
+    }
+  }
+
+  return analysis;
+}
+
+// Analyze individual validation error
+function analyzeIndividualError(error, schema, data) {
+  const analyzed = {
+    original: error,
+    category: 'other',
+    severity: 'critical',
+    path: error.instancePath || 'root',
+    message: '',
+    details: {},
+    suggestions: []
+  };
+
+  switch (error.keyword) {
+    case 'required':
+      analyzed.category = 'missing';
+      analyzed.severity = 'critical';
+      const missingField = error.params.missingProperty;
+      analyzed.message = `Missing required field "${missingField}"`;
+      analyzed.details = {
+        missingField: missingField,
+        location: analyzed.path,
+        schemaRequirement: getSchemaRequirement(schema, analyzed.path, missingField)
+      };
+      analyzed.suggestions = [
+        `Add the "${missingField}" field to the JSON object`,
+        `Verify the field name spelling matches the schema exactly`,
+        `Check if the field should be nested in a different object`
+      ];
+      break;
+
+    case 'additionalProperties':
+      analyzed.category = 'extra';
+      analyzed.severity = 'warning';
+      const extraField = error.params.additionalProperty;
+      analyzed.message = `Unexpected field "${extraField}" is not allowed`;
+      analyzed.details = {
+        extraField: extraField,
+        location: analyzed.path,
+        allowedFields: getAllowedFields(schema, analyzed.path)
+      };
+      analyzed.suggestions = [
+        `Remove the "${extraField}" field from the JSON object`,
+        `Check if "${extraField}" belongs in a different part of the structure`,
+        `Verify the field name spelling against the schema`,
+        `Consider updating the schema if this field should be allowed`
+      ];
+      break;
+
+    case 'type':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      const expectedType = Array.isArray(error.schema) ? error.schema.join(' or ') : error.schema;
+      const actualType = getActualType(data, analyzed.path);
+      const currentValue = getValueAtPath(data, analyzed.path);
+      analyzed.message = `Wrong data type: expected ${expectedType}, but got ${actualType}`;
+      analyzed.details = {
+        expectedType: expectedType,
+        actualType: actualType,
+        location: analyzed.path,
+        value: currentValue
+      };
+      
+      // Provide type-specific suggestions
+      let suggestions = [];
+      if (expectedType === 'string' && actualType === 'number') {
+        suggestions.push(`Convert the number ${currentValue} to a string: "${currentValue}"`);
+      } else if (expectedType === 'number' && actualType === 'string') {
+        suggestions.push(`Convert the string "${currentValue}" to a number`);
+      } else if (expectedType === 'boolean' && actualType === 'string') {
+        suggestions.push(`Use true or false instead of "${currentValue}"`);
+      } else if (expectedType === 'array' && actualType !== 'array') {
+        suggestions.push(`Wrap the value in square brackets to make it an array: [${JSON.stringify(currentValue)}]`);
+      } else {
+        suggestions.push(`Change the value to match the expected ${expectedType} type`);
+      }
+      
+      suggestions.push(`Check the schema requirements for this field`);
+      suggestions.push(`Verify the data source provides the correct type`);
+      
+      analyzed.suggestions = suggestions;
+      break;
+
+    case 'enum':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      analyzed.message = `Invalid value: must be one of ${error.schema.join(', ')}`;
+      analyzed.details = {
+        allowedValues: error.schema,
+        actualValue: error.data,
+        location: analyzed.path
+      };
+      analyzed.suggestions = [
+        `Use one of the allowed values: ${error.schema.join(', ')}`,
+        `Check for typos in the value`
+      ];
+      break;
+
+    case 'format':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      analyzed.message = `Invalid format: expected ${error.schema} format`;
+      analyzed.details = {
+        expectedFormat: error.schema,
+        actualValue: error.data,
+        location: analyzed.path
+      };
+      analyzed.suggestions = [
+        `Ensure the value matches the ${error.schema} format`,
+        `Check the value for correct syntax`
+      ];
+      break;
+
+    case 'minimum':
+    case 'maximum':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      const comparison = error.keyword === 'minimum' ? 'at least' : 'at most';
+      analyzed.message = `Value must be ${comparison} ${error.schema}`;
+      analyzed.details = {
+        limit: error.schema,
+        actualValue: error.data,
+        location: analyzed.path
+      };
+      break;
+
+    default:
+      analyzed.message = error.message || 'Unknown validation error';
+      analyzed.details = {
+        keyword: error.keyword,
+        schema: error.schema,
+        data: error.data,
+        location: analyzed.path
+      };
+      break;
+  }
+
+  return analyzed;
+}
+
+// Helper functions for error analysis
+function getSchemaRequirement(schema, path, fieldName) {
+  try {
+    const schemaAtPath = getSchemaAtPath(schema, path);
+    if (schemaAtPath && schemaAtPath.properties && schemaAtPath.properties[fieldName]) {
+      return {
+        type: schemaAtPath.properties[fieldName].type,
+        description: schemaAtPath.properties[fieldName].description
+      };
+    }
+  } catch (e) {
+    // Ignore errors in schema traversal
+  }
+  return null;
+}
+
+function getAllowedFields(schema, path) {
+  try {
+    const schemaAtPath = getSchemaAtPath(schema, path);
+    if (schemaAtPath && schemaAtPath.properties) {
+      return Object.keys(schemaAtPath.properties);
+    }
+  } catch (e) {
+    // Ignore errors in schema traversal
+  }
+  return [];
+}
+
+function getSchemaAtPath(schema, path) {
+  if (!path || path === 'root') return schema;
+  
+  const pathParts = path.split('/').filter(part => part !== '');
+  let current = schema;
+  
+  for (const part of pathParts) {
+    if (current.properties && current.properties[part]) {
+      current = current.properties[part];
+    } else if (current.items) {
+      current = current.items;
+    } else {
+      return null;
+    }
+  }
+  
+  return current;
+}
+
+function getActualType(data, path) {
+  const value = getValueAtPath(data, path);
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function getValueAtPath(data, path) {
+  if (!path || path === 'root') return data;
+  
+  const pathParts = path.split('/').filter(part => part !== '');
+  let current = data;
+  
+  for (const part of pathParts) {
+    if (current && typeof current === 'object' && part in current) {
+      current = current[part];
+    } else {
+      return undefined;
+    }
+  }
+  
+  return current;
+}
+
+// Render intelligent validation analysis
+function renderValidationAnalysis(analysis) {
+  const { summary, categories } = analysis;
+  
+  let html = '<div class="validation-errors">';
+  
+  // Header with summary
+  html += `
+    <div class="validation-errors-header">
+      <div class="validation-errors-header-left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span>Validation Failed</span>
+      </div>
+      <div class="validation-summary">
+        ${summary.critical > 0 ? `
+          <div class="summary-stat">
+            <svg class="summary-stat-icon" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            ${summary.critical} critical
+          </div>
+        ` : ''}
+        ${summary.warnings > 0 ? `
+          <div class="summary-stat">
+            <svg class="summary-stat-icon" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            ${summary.warnings} warnings
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  
+  html += '<div class="validation-errors-content">';
+  
+  // Missing Fields Category
+  if (categories.missingFields.length > 0) {
+    html += renderErrorCategory(
+      'missing-fields',
+      'Missing Required Fields',
+      'critical',
+      categories.missingFields,
+      `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      `
+    );
+  }
+  
+  // Type Mismatches Category
+  if (categories.typeMismatches.length > 0) {
+    html += renderErrorCategory(
+      'type-mismatches',
+      'Type Mismatches',
+      'critical',
+      categories.typeMismatches,
+      `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12l2 2 4-4"></path>
+          <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"></path>
+          <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"></path>
+        </svg>
+      `
+    );
+  }
+  
+  // Extra Fields Category
+  if (categories.extraFields.length > 0) {
+    html += renderErrorCategory(
+      'extra-fields',
+      'Unexpected Fields',
+      'warning',
+      categories.extraFields,
+      `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      `
+    );
+  }
+  
+  // Other Errors Category
+  if (categories.otherErrors.length > 0) {
+    html += renderErrorCategory(
+      'other-errors',
+      'Other Validation Errors',
+      'critical',
+      categories.otherErrors,
+      `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      `
+    );
+  }
+  
+  html += '</div></div>';
   
   return html;
 }
 
-// Enhanced syntax highlighting with error indicators
-function highlightJsonText(text) {
-  if (!text) return '';
+// Render error category
+function renderErrorCategory(categoryId, title, severity, errors, icon) {
+  const severityClass = `error-severity-${severity}`;
   
-  const { tokens, errors } = tokenizeJson(text);
-  const validation = validateJsonWithErrors(text);
+  let html = `
+    <div class="error-category" data-category="${categoryId}">
+      <div class="error-category-header" onclick="toggleErrorCategory('${categoryId}')">
+        <div class="error-category-title">
+          <span class="${severityClass}">${icon}</span>
+          <span class="${severityClass}">${title}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="error-count-badge">${errors.length}</span>
+          <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9,18 15,12 9,6"></polyline>
+          </svg>
+        </div>
+      </div>
+      <div class="error-category-content">
+  `;
   
-  // Combine tokenization and validation errors
-  const allErrors = [...errors, ...validation.errors];
-  errorMarkers = allErrors;
-  
-  let result = '';
-  let lastEnd = 0;
-  
-  tokens.forEach(token => {
-    // Add any text between tokens
-    if (token.start > lastEnd) {
-      result += escapeHtml(text.slice(lastEnd, token.start));
-    }
-    
-    const escapedText = escapeHtml(token.text);
-    
-    // Check if this token has an error
-    const hasError = allErrors.some(error => 
-      error.start <= token.start && error.end >= token.end
-    );
-    
-    let tokenHtml = '';
-    switch (token.type) {
-      case 'key':
-        tokenHtml = `<span class="json-key">${escapedText}</span>`;
-        break;
-      case 'string':
-        tokenHtml = `<span class="json-string">${escapedText}</span>`;
-        break;
-      case 'number':
-        tokenHtml = `<span class="json-number">${escapedText}</span>`;
-        break;
-      case 'boolean':
-        tokenHtml = `<span class="json-boolean">${escapedText}</span>`;
-        break;
-      case 'null':
-        tokenHtml = `<span class="json-null">${escapedText}</span>`;
-        break;
-      case 'brace':
-        tokenHtml = `<span class="json-brace">${escapedText}</span>`;
-        break;
-      case 'punctuation':
-        tokenHtml = `<span class="json-punctuation">${escapedText}</span>`;
-        break;
-      case 'comment':
-        tokenHtml = `<span class="json-comment">${escapedText}</span>`;
-        break;
-      default:
-        tokenHtml = escapedText;
-    }
-    
-    // Wrap with error indicator if needed
-    if (hasError) {
-      const error = allErrors.find(e => e.start <= token.start && e.end >= token.end);
-      tokenHtml = `<span class="error-indicator">${tokenHtml}<span class="error-tooltip">${error.message}</span></span>`;
-    }
-    
-    result += tokenHtml;
-    lastEnd = token.end;
-  });
-  
-  // Add any remaining text
-  if (lastEnd < text.length) {
-    result += escapeHtml(text.slice(lastEnd));
+  for (const error of errors) {
+    html += renderErrorItem(error);
   }
   
-  return result;
+  html += '</div></div>';
+  
+  return html;
 }
 
-// HTML escaping
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// Update editor highlighting with error detection
-function updateEditorHighlight() {
-  if (isViewMode) return;
+// Render individual error item
+function renderErrorItem(error) {
+  const severityClass = error.severity === 'critical' ? 'critical' : 'warning';
+  const icon = error.severity === 'critical' 
+    ? `<svg class="error-icon ${severityClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+         <circle cx="12" cy="12" r="10"></circle>
+         <line x1="15" y1="9" x2="9" y2="15"></line>
+         <line x1="9" y1="9" x2="15" y2="15"></line>
+       </svg>`
+    : `<svg class="error-icon ${severityClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+         <line x1="12" y1="9" x2="12" y2="13"></line>
+         <line x1="12" y1="17" x2="12.01" y2="17"></line>
+       </svg>`;
   
-  const text = jsonEditor.value;
+  let html = `
+    <div class="error-item">
+      <div class="error-item-header">
+        ${icon}
+        <div class="error-message">
+          <div class="error-message-text">${error.message}</div>
+          ${error.path && error.path !== 'root' ? `<div class="error-path">${error.path}</div>` : ''}
+        </div>
+      </div>
+  `;
   
-  // Update syntax highlighting
-  syntaxOverlay.innerHTML = highlightJsonText(text);
+  // Consolidate information into a single details section
+  let detailsContent = '';
   
-  // Update line numbers with fixed width
-  if (showLineNumbers) {
-    lineNumbers.innerHTML = generateLineNumbers(text || '\n');
-  }
-  
-  // Auto-format if enabled
-  if (autoFormat && text.trim()) {
-    debounceAutoFormat();
-  }
-}
-
-// Debounced auto-format
-let autoFormatTimeout;
-function debounceAutoFormat() {
-  clearTimeout(autoFormatTimeout);
-  autoFormatTimeout = setTimeout(() => {
-    try {
-      const parsed = JSON.parse(jsonEditor.value);
-      const formatted = JSON.stringify(parsed, null, 2);
-      if (formatted !== jsonEditor.value) {
-        const cursorPos = jsonEditor.selectionStart;
-        jsonEditor.value = formatted;
-        jsonEditor.setSelectionRange(cursorPos, cursorPos);
-        updateEditorHighlight();
-      }
-    } catch (e) {
-      // Don't auto-format invalid JSON
+  // Type mismatch details
+  if (error.category === 'type' && error.details.expectedType && error.details.actualType) {
+    detailsContent += `
+      <div class="type-comparison">
+        <span class="type-expected">${error.details.expectedType}</span>
+        <span class="type-arrow">→</span>
+        <span class="type-actual">${error.details.actualType}</span>
+      </div>
+    `;
+    if (error.details.value !== undefined) {
+      detailsContent += `<div style="margin-top: 4px; font-size: 10px;">Value: <code style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 2px;">${JSON.stringify(error.details.value)}</code></div>`;
     }
-  }, 1000);
+  }
+  
+  // Extra field details
+  else if (error.category === 'extra' && error.details.allowedFields && error.details.allowedFields.length > 0) {
+    detailsContent += `<div style="font-size: 10px;">Allowed: ${error.details.allowedFields.slice(0, 3).map(field => `<code style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 2px; margin-right: 2px;">${field}</code>`).join('')}${error.details.allowedFields.length > 3 ? '...' : ''}</div>`;
+  }
+  
+  // Missing field details
+  else if (error.category === 'missing' && error.details.schemaRequirement) {
+    detailsContent += `<div style="font-size: 10px;">Required: <code style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 2px;">${error.details.schemaRequirement.type}</code></div>`;
+  }
+  
+  // Add the most important suggestion only
+  if (error.suggestions && error.suggestions.length > 0) {
+    detailsContent += `<div style="margin-top: 4px; font-size: 10px; font-style: italic; color: var(--linear-text-tertiary);">💡 ${error.suggestions[0]}</div>`;
+  }
+  
+  if (detailsContent) {
+    html += `<div class="error-details">${detailsContent}</div>`;
+  }
+  
+  html += '</div>';
+  
+  return html;
 }
 
-// Synchronized scrolling with smooth behavior
-function syncScroll() {
-  const scrollTop = jsonEditor.scrollTop;
-  const scrollLeft = jsonEditor.scrollLeft;
-  
-  syntaxOverlay.scrollTop = scrollTop;
-  syntaxOverlay.scrollLeft = scrollLeft;
-  errorOverlay.scrollTop = scrollTop;
-  errorOverlay.scrollLeft = scrollLeft;
-  
-  if (showLineNumbers) {
-    lineNumbers.scrollTop = scrollTop;
-  }
-}
-
-// Enhanced JSON viewer for preview mode
-function highlightJson(jsonString, indent = 0) {
-  try {
-    const obj = JSON.parse(jsonString);
-    return formatJsonWithHighlight(obj, indent);
-  } catch (error) {
-    return `<div class="status error">JSON Syntax Error: ${error.message}</div>`;
-  }
-}
-
-// Recursive JSON formatter with smart folding
-function formatJsonWithHighlight(obj, indent = 0, path = '') {
-  if (obj === null) {
-    return `<span class="json-null">null</span>`;
-  }
-  
-  if (typeof obj === 'boolean') {
-    return `<span class="json-boolean">${obj}</span>`;
-  }
-  
-  if (typeof obj === 'number') {
-    return `<span class="json-number">${obj}</span>`;
-  }
-  
-  if (typeof obj === 'string') {
-    return `<span class="json-string">"${escapeHtml(obj)}"</span>`;
-  }
-  
-  if (Array.isArray(obj)) {
-    if (obj.length === 0) {
-      return `<span class="json-brace">[]</span>`;
-    }
-    
-    const arrayId = `array-${path.replace(/\./g, '-')}-${Math.random().toString(36).substr(2, 9)}`;
-    const isCollapsed = smartFolding && obj.length > 10;
-    
-    let result = `<div class="json-line json-expandable ${isCollapsed ? 'json-collapsed' : ''}" data-path="${path}">`;
-    result += `<span class="json-expand-icon" onclick="toggleExpand('${arrayId}')">${isCollapsed ? '▶' : '▼'}</span>`;
-    result += `<span class="json-brace">[</span>`;
-    if (isCollapsed) {
-      result += `<span class="muted"> // ${obj.length} items</span>`;
-    }
-    result += `</div>`;
-    
-    result += `<div id="${arrayId}" class="json-content" ${isCollapsed ? 'style="display: none;"' : ''}>`;
-    obj.forEach((item, index) => {
-      const itemPath = `${path}[${index}]`;
-      result += `<div class="json-line" style="margin-left: ${(indent + 1) * 20}px;">`;
-      result += formatJsonWithHighlight(item, indent + 1, itemPath);
-      if (index < obj.length - 1) {
-        result += `<span class="json-punctuation">,</span>`;
-      }
-      result += `</div>`;
-    });
-    result += `</div>`;
-    
-    result += `<div class="json-line" style="margin-left: ${indent * 20}px;">`;
-    result += `<span class="json-brace">]</span>`;
-    result += `</div>`;
-    
-    return result;
-  }
-  
-  if (typeof obj === 'object') {
-    const keys = Object.keys(obj);
-    if (keys.length === 0) {
-      return `<span class="json-brace">{}</span>`;
-    }
-    
-    const objectId = `object-${path.replace(/\./g, '-')}-${Math.random().toString(36).substr(2, 9)}`;
-    const isCollapsed = smartFolding && keys.length > 15;
-    
-    let result = `<div class="json-line json-expandable ${isCollapsed ? 'json-collapsed' : ''}" data-path="${path}">`;
-    result += `<span class="json-expand-icon" onclick="toggleExpand('${objectId}')">${isCollapsed ? '▶' : '▼'}</span>`;
-    result += `<span class="json-brace">{</span>`;
-    if (isCollapsed) {
-      result += `<span class="muted"> // ${keys.length} properties</span>`;
-    }
-    result += `</div>`;
-    
-    result += `<div id="${objectId}" class="json-content" ${isCollapsed ? 'style="display: none;"' : ''}>`;
-    keys.forEach((key, index) => {
-      const keyPath = path ? `${path}.${key}` : key;
-      result += `<div class="json-line" style="margin-left: ${(indent + 1) * 20}px;">`;
-      result += `<span class="json-key">"${escapeHtml(key)}"</span>`;
-      result += `<span class="json-punctuation">: </span>`;
-      result += formatJsonWithHighlight(obj[key], indent + 1, keyPath);
-      if (index < keys.length - 1) {
-        result += `<span class="json-punctuation">,</span>`;
-      }
-      result += `</div>`;
-    });
-    result += `</div>`;
-    
-    result += `<div class="json-line" style="margin-left: ${indent * 20}px;">`;
-    result += `<span class="json-brace">}</span>`;
-    result += `</div>`;
-    
-    return result;
-  }
-  
-  return String(obj);
-}
-
-// Toggle expand/collapse with animation
-function toggleExpand(elementId) {
-  const element = document.getElementById(elementId);
-  const expandIcon = element.parentElement.querySelector('.json-expand-icon');
-  const parentLine = element.parentElement;
-  
-  if (element.style.display === 'none') {
-    element.style.display = 'block';
-    expandIcon.textContent = '▼';
-    parentLine.classList.remove('json-collapsed');
-  } else {
-    element.style.display = 'none';
-    expandIcon.textContent = '▶';
-    parentLine.classList.add('json-collapsed');
-  }
-}
-
-// Expand/collapse all with smart detection
-function expandAll() {
-  const contents = jsonViewer.querySelectorAll('.json-content');
-  const icons = jsonViewer.querySelectorAll('.json-expand-icon');
-  const lines = jsonViewer.querySelectorAll('.json-expandable');
-  
-  contents.forEach(content => {
-    content.style.display = 'block';
-  });
-  
-  icons.forEach(icon => {
-    icon.textContent = '▼';
-  });
-  
-  lines.forEach(line => {
-    line.classList.remove('json-collapsed');
+// Setup error category expansion listeners
+function setupErrorCategoryListeners() {
+  // Remove existing listeners to prevent duplicates
+  const existingListeners = document.querySelectorAll('.error-category-header');
+  existingListeners.forEach(header => {
+    header.replaceWith(header.cloneNode(true));
   });
 }
 
-function collapseAll() {
-  const contents = jsonViewer.querySelectorAll('.json-content');
-  const icons = jsonViewer.querySelectorAll('.json-expand-icon');
-  const lines = jsonViewer.querySelectorAll('.json-expandable');
-  
-  contents.forEach(content => {
-    content.style.display = 'none';
-  });
-  
-  icons.forEach(icon => {
-    icon.textContent = '▶';
-  });
-  
-  lines.forEach(line => {
-    line.classList.add('json-collapsed');
-  });
+// Toggle error category expansion
+function toggleErrorCategory(categoryId) {
+  const category = document.querySelector(`[data-category="${categoryId}"]`);
+  if (category) {
+    category.classList.toggle('expanded');
+  }
 }
 
-// Update JSON viewer
-function updateJsonViewer() {
-  const text = jsonEditor.value.trim();
-  if (!text) {
-    jsonViewer.innerHTML = '<div class="muted">No content to display</div>';
+// Render the schema tree in the left panel
+function renderSchemaTree() {
+  const folders = {};
+  
+  // Group schemas by folder
+  for (const schemaId in schemaData) {
+    const schema = schemaData[schemaId];
+    const folderName = schema.folder || 'General';
+    
+    if (!folders[folderName]) {
+      folders[folderName] = [];
+    }
+    folders[folderName].push({ id: schemaId, ...schema });
+  }
+  
+  // Render tree
+  let html = '';
+  for (const folderName in folders) {
+    html += `
+      <div class="tree-item folder expanded" data-folder="${folderName}">
+        ${folderName}
+      </div>
+    `;
+    
+    for (const schema of folders[folderName]) {
+      const isSelected = currentSchema === schema.id;
+      html += `
+        <div class="tree-item schema ${isSelected ? 'selected' : ''}" data-schema="${schema.id}">
+          ${schema.name}
+        </div>
+      `;
+    }
+  }
+  
+  schemaTree.innerHTML = html;
+}
+
+// Render JSON files list in the middle panel
+function renderJsonFilesList() {
+  if (!currentSchema || !jsonFiles[currentSchema]) {
+    jsonFilesList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📄</div>
+        <div class="empty-state-title">No Schema Selected</div>
+        <div class="empty-state-description">Select a JSON Schema from the left panel to view associated JSON files</div>
+      </div>
+    `;
     return;
   }
   
-  jsonViewer.innerHTML = highlightJson(text);
+  const files = jsonFiles[currentSchema];
+  const schema = schemaData[currentSchema];
+  
+  // Update schema info
+  schemaInfo.textContent = `${files.length} files associated with ${schema.name}`;
+  
+  let html = '';
+  for (const file of files) {
+    const isSelected = currentJsonFile === file.path;
+    const validClass = file.valid === true ? 'valid' : file.valid === false ? 'invalid' : '';
+    const statusIcon = file.valid === true ? 'valid' : file.valid === false ? 'invalid' : '';
+    
+    let statusText = 'Not validated';
+    let errorSummary = '';
+    
+    if (file.valid === true) {
+      statusText = 'Valid';
+    } else if (file.valid === false && file.analyzedErrors) {
+      const analysis = file.analyzedErrors;
+      statusText = 'Invalid';
+      
+      const criticalCount = analysis.summary.critical;
+      const warningCount = analysis.summary.warnings;
+      
+      if (criticalCount > 0 && warningCount > 0) {
+        errorSummary = `${criticalCount} errors, ${warningCount} warnings`;
+      } else if (criticalCount > 0) {
+        errorSummary = `${criticalCount} error${criticalCount > 1 ? 's' : ''}`;
+      } else if (warningCount > 0) {
+        errorSummary = `${warningCount} warning${warningCount > 1 ? 's' : ''}`;
+      }
+    }
+    
+    html += `
+      <div class="json-file-card ${isSelected ? 'selected' : ''} ${validClass}" data-file="${file.path}">
+        <div class="json-file-name">${file.name}</div>
+        <div class="json-file-status">
+          <div class="status-icon ${statusIcon}"></div>
+          <span class="status-${validClass}">${statusText}</span>
+          ${errorSummary ? `<span class="error-summary">(${errorSummary})</span>` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  jsonFilesList.innerHTML = html;
 }
 
-// Mode switching
-function switchMode(mode) {
-  isViewMode = mode === 'view';
-  
-  if (isViewMode) {
-    codeEditorContainer.style.display = 'none';
+// Render JSON content in the right panel
+function renderJsonContent() {
+  if (!currentJsonFile) {
+    jsonViewer.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-title">No JSON File Selected</div>
+        <div class="empty-state-description">Select a JSON file from the middle panel to view its content and validation results</div>
+      </div>
+    `;
+    jsonEditor.style.display = 'none';
     jsonViewer.style.display = 'block';
-    editorOptions.style.display = 'none';
-    editModeBtn.classList.remove('active');
-    viewModeBtn.classList.add('active');
-    updateJsonViewer();
+    rightPanelTitle.textContent = 'JSON Content Viewer';
+    validationStatus.innerHTML = '';
+    updateEditButtons();
+    return;
+  }
+  
+  // Find the current file data
+  let fileData = null;
+  for (const schemaId in jsonFiles) {
+    const file = jsonFiles[schemaId].find(f => f.path === currentJsonFile);
+    if (file) {
+      fileData = file;
+      break;
+    }
+  }
+  
+  if (!fileData) return;
+  
+  // Update header
+  rightPanelTitle.textContent = fileData.name;
+  
+  // Update validation status
+  let validationHtml = '';
+  
+  if (fileData.valid === true) {
+    validationHtml = `
+      <div class="status-icon valid"></div>
+      <span class="status-valid">Valid JSON</span>
+    `;
+  } else if (fileData.valid === false) {
+    const errorCount = fileData.errors ? fileData.errors.length : 0;
+    validationHtml = `
+      <div class="status-icon invalid"></div>
+      <span class="status-invalid">Invalid JSON (${errorCount} errors)</span>
+    `;
   } else {
-    codeEditorContainer.style.display = 'flex';
+    validationHtml = `
+      <span class="status-pending">Not validated</span>
+    `;
+  }
+  validationStatus.innerHTML = validationHtml;
+  
+  if (isEditMode) {
+    // Show editor
     jsonViewer.style.display = 'none';
-    editorOptions.style.display = 'flex';
-    editModeBtn.classList.add('active');
-    viewModeBtn.classList.remove('active');
-    updateEditorHighlight();
+    jsonEditor.style.display = 'block';
+    
+    if (fileData.content) {
+      const jsonString = JSON.stringify(fileData.content, null, 2);
+      jsonEditor.value = jsonString;
+    }
+  } else {
+    // Show viewer
+    jsonEditor.style.display = 'none';
+    jsonViewer.style.display = 'block';
+    
+    // Render content
+    let contentHtml = '';
+    
+    // Show intelligent validation analysis if any errors
+    if (fileData.analyzedErrors && fileData.analyzedErrors.summary.total > 0) {
+      contentHtml += renderValidationAnalysis(fileData.analyzedErrors);
+    }
+    
+    // Show JSON content with syntax highlighting
+    if (fileData.content) {
+      const jsonString = JSON.stringify(fileData.content, null, 2);
+      const highlightedJson = highlightJson(jsonString);
+      contentHtml += highlightedJson;
+    }
+    
+    jsonViewer.innerHTML = contentHtml;
+    
+    // Add event listeners for error category expansion
+    setupErrorCategoryListeners();
   }
+  
+  updateEditButtons();
 }
 
-// Theme switching (now toggles from dark to light)
-function toggleTheme() {
-  isDarkTheme = !isDarkTheme;
-  
-  if (isDarkTheme) {
-    document.body.style.background = '#0d1117';
-    document.body.style.color = '#f0f6fc';
-    document.body.classList.remove('light-theme');
-    themeBtn.textContent = 'Light Theme';
-  } else {
-    document.body.style.background = '#ffffff';
-    document.body.style.color = '#24292f';
-    document.body.classList.add('light-theme');
-    themeBtn.textContent = 'Dark Theme';
-  }
-  
-  // Update displays
-  if (isViewMode) {
-    updateJsonViewer();
-  } else {
-    updateEditorHighlight();
-  }
+// JSON syntax highlighting
+function highlightJson(jsonString) {
+  return jsonString
+    .replace(/(".*?")(\s*:)/g, '<span class="json-key">$1</span>$2')
+    .replace(/:\s*(".*?")/g, ': <span class="json-string">$1</span>')
+    .replace(/:\s*(\d+\.?\d*)/g, ': <span class="json-number">$1</span>')
+    .replace(/:\s*(true|false)/g, ': <span class="json-boolean">$1</span>')
+    .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
 }
 
-// Enhanced copy functionality
-async function copyFormattedJson() {
+// Update edit button visibility
+function updateEditButtons() {
+  const hasFile = currentJsonFile !== null;
+  
+  copyJsonBtn.style.display = hasFile ? 'flex' : 'none';
+  editModeBtn.style.display = hasFile && !isEditMode ? 'flex' : 'none';
+  saveJsonBtn.style.display = hasFile && isEditMode ? 'flex' : 'none';
+  cancelEditBtn.style.display = hasFile && isEditMode ? 'flex' : 'none';
+}
+
+// Enter edit mode
+function enterEditMode() {
+  if (!currentJsonFile) return;
+  
+  // Store original content for cancel functionality
+  const fileData = getCurrentFileData();
+  if (fileData && fileData.content) {
+    originalJsonContent = JSON.stringify(fileData.content, null, 2);
+  }
+  
+  isEditMode = true;
+  renderJsonContent();
+  showStatus('Edit mode enabled', 'info');
+}
+
+// Exit edit mode
+function exitEditMode() {
+  isEditMode = false;
+  originalJsonContent = null;
+  renderJsonContent();
+}
+
+// Save JSON changes
+async function saveJsonChanges() {
+  if (!currentJsonFile || !isEditMode) return;
+  
   try {
-    const text = jsonEditor.value.trim();
-    if (!text) {
+    const jsonText = jsonEditor.value.trim();
+    if (!jsonText) {
+      showStatus('Cannot save empty JSON', 'error');
+      return;
+    }
+    
+    // Validate JSON syntax
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(jsonText);
+    } catch (parseError) {
+      showStatus(`Invalid JSON: ${parseError.message}`, 'error');
+      return;
+    }
+    
+    // Update the file data
+    const fileData = getCurrentFileData();
+    if (fileData) {
+      fileData.content = parsedJson;
+      
+      // Re-validate against schema
+      if (currentSchema && schemaData[currentSchema] && validator) {
+        const compiledSchema = validator.compile(schemaData[currentSchema].content);
+        fileData.valid = compiledSchema(parsedJson);
+        if (!fileData.valid) {
+          fileData.errors = compiledSchema.errors;
+        } else {
+          fileData.errors = null;
+        }
+      }
+      
+      // Here you would typically save to file system
+      // For now, we'll just update the in-memory data
+      showStatus('JSON saved successfully', 'success');
+      
+      exitEditMode();
+      renderJsonFilesList(); // Update validation status in file list
+    }
+  } catch (error) {
+    showStatus(`Save failed: ${error.message}`, 'error');
+  }
+}
+
+// Cancel edit mode
+function cancelEdit() {
+  if (originalJsonContent) {
+    jsonEditor.value = originalJsonContent;
+  }
+  exitEditMode();
+  showStatus('Edit cancelled', 'info');
+}
+
+// Copy JSON to clipboard
+async function copyJsonToClipboard() {
+  if (!currentJsonFile) return;
+  
+  try {
+    const fileData = getCurrentFileData();
+    if (!fileData || !fileData.content) {
       showStatus('No content to copy', 'error');
       return;
     }
     
-    const jsonData = JSON.parse(text);
-    const formattedJson = JSON.stringify(jsonData, null, 2);
-    
-    await navigator.clipboard.writeText(formattedJson);
-    showStatus('Formatted JSON copied to clipboard', 'success');
+    const jsonString = JSON.stringify(fileData.content, null, 2);
+    await navigator.clipboard.writeText(jsonString);
+    showStatus('JSON copied to clipboard', 'success');
   } catch (error) {
     showStatus(`Copy failed: ${error.message}`, 'error');
   }
 }
 
-// Enhanced download functionality
-function downloadJson() {
-  try {
-    const text = jsonEditor.value.trim();
-    if (!text) {
-      showStatus('No content to download', 'error');
-      return;
+// Get current file data
+function getCurrentFileData() {
+  if (!currentJsonFile) return null;
+  
+  for (const schemaId in jsonFiles) {
+    const file = jsonFiles[schemaId].find(f => f.path === currentJsonFile);
+    if (file) {
+      return file;
     }
-    
-    const jsonData = JSON.parse(text);
-    const formattedJson = JSON.stringify(jsonData, null, 2);
-    
-    const blob = new Blob([formattedJson], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    const fileName = currentFilePath ? 
-      currentFilePath.split('/').pop() || currentFilePath.split('\\').pop() : 
-      `json-export-${new Date().toISOString().split('T')[0]}.json`;
-    a.download = fileName;
-    
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    URL.revokeObjectURL(url);
-    showStatus(`JSON file downloaded: ${fileName}`, 'success');
-  } catch (error) {
-    showStatus(`Download failed: ${error.message}`, 'error');
   }
+  return null;
 }
 
-// Clear editor with confirmation
-function clearEditor() {
-  if (jsonEditor.value.trim() && !confirm('Are you sure you want to clear all content?')) {
-    return;
-  }
+// Setup event listeners
+function setupEventListeners() {
+  // Schema tree clicks
+  schemaTree.addEventListener('click', (e) => {
+    const schemaItem = e.target.closest('.tree-item.schema');
+    const folderItem = e.target.closest('.tree-item.folder');
+    
+    if (schemaItem) {
+      const schemaId = schemaItem.dataset.schema;
+      selectSchema(schemaId);
+    } else if (folderItem) {
+      toggleFolder(folderItem);
+    }
+  });
   
-  jsonEditor.value = '';
-  updateFileInfo(null);
-  if (isViewMode) {
-    updateJsonViewer();
-  } else {
-    updateEditorHighlight();
-  }
-  showStatus('Editor cleared', 'info');
+  // JSON files list clicks
+  jsonFilesList.addEventListener('click', (e) => {
+    const fileCard = e.target.closest('.json-file-card');
+    if (fileCard) {
+      const filePath = fileCard.dataset.file;
+      selectJsonFile(filePath);
+    }
+  });
+  
+  // Right-click context menu for schemas
+  schemaTree.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const schemaItem = e.target.closest('.tree-item.schema');
+    if (schemaItem) {
+      showContextMenu(e.clientX, e.clientY, schemaItem.dataset.schema);
+    }
+  });
+  
+  // Hide context menu on click elsewhere
+  document.addEventListener('click', () => {
+    hideContextMenu();
+  });
+  
+  // Button event listeners
+  addSchemaBtn.addEventListener('click', () => {
+    showStatus('Add schema functionality would be implemented here', 'info');
+  });
+  
+  refreshBtn.addEventListener('click', async () => {
+    showStatus('Refreshing schemas and files...', 'info');
+    await loadSchemas();
+    await loadJsonFiles();
+    renderSchemaTree();
+    renderJsonFilesList();
+    renderJsonContent();
+    showStatus('Refreshed successfully', 'success');
+  });
+  
+
+  // JSON editor buttons
+  copyJsonBtn.addEventListener('click', copyJsonToClipboard);
+  editModeBtn.addEventListener('click', enterEditMode);
+  saveJsonBtn.addEventListener('click', saveJsonChanges);
+  cancelEditBtn.addEventListener('click', cancelEdit);
+  
+  // Context menu actions
+  document.getElementById('viewSchemaItem').addEventListener('click', () => {
+    if (currentSchema) {
+      viewSchema(currentSchema);
+    }
+    hideContextMenu();
+  });
+  
+  document.getElementById('editSchemaItem').addEventListener('click', () => {
+    if (currentSchema) {
+      showStatus('Edit schema functionality would be implemented here', 'info');
+    }
+    hideContextMenu();
+  });
+  
+  document.getElementById('deleteSchemaItem').addEventListener('click', () => {
+    if (currentSchema) {
+      showStatus('Delete schema functionality would be implemented here', 'info');
+    }
+    hideContextMenu();
+  });
+  
+  // Resize handles
+  setupResizeHandles();
+  
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyboardShortcuts);
 }
 
-// Option toggles
-function toggleLineNumbers() {
-  showLineNumbers = showLineNumbersCheckbox.checked;
-  const lineNumbersColumn = document.querySelector('.line-numbers-column');
-  
-  if (showLineNumbers) {
-    lineNumbersColumn.style.display = 'block';
-  } else {
-    lineNumbersColumn.style.display = 'none';
-  }
-  
-  updateEditorHighlight();
-}
-
-function toggleAutoFormat() {
-  autoFormat = autoFormatCheckbox.checked;
-  if (autoFormat) {
-    showStatus('Auto-format enabled', 'info', 1500);
-  } else {
-    showStatus('Auto-format disabled', 'info', 1500);
-  }
-}
-
-function toggleSmartFolding() {
-  smartFolding = smartFoldingCheckbox.checked;
-  if (smartFolding) {
-    showStatus('Smart folding enabled', 'info', 1500);
-  } else {
-    showStatus('Smart folding disabled', 'info', 1500);
-  }
-  
-  if (isViewMode) {
-    updateJsonViewer();
-  }
-}
-
-// Event Listeners
-newBtn.addEventListener('click', () => {
-  if (jsonEditor.value.trim() && !confirm('Create new file? Unsaved changes will be lost.')) {
-    return;
-  }
-  
-  jsonEditor.value = '';
-  updateFileInfo(null);
-  if (isViewMode) {
-    updateJsonViewer();
-  } else {
-    updateEditorHighlight();
-  }
-  showStatus('New file created', 'success');
-});
-
-openBtn.addEventListener('click', async () => {
-  try {
-    const result = await window.jsonAPI.readFile();
-    if (result.success) {
-      jsonEditor.value = JSON.stringify(result.data, null, 2);
-      updateFileInfo(result.filePath);
-      if (isViewMode) {
-        updateJsonViewer();
-      } else {
-        updateEditorHighlight();
-      }
-      showStatus(`File opened: ${result.filePath.split('/').pop() || result.filePath.split('\\').pop()}`, 'success');
-    } else {
-      showStatus(`Failed to open file: ${result.error}`, 'error');
-    }
-  } catch (error) {
-    showStatus(`Error opening file: ${error.message}`, 'error');
-  }
-});
-
-saveBtn.addEventListener('click', async () => {
-  try {
-    const text = jsonEditor.value.trim();
-    if (!text) {
-      showStatus('No content to save', 'error');
-      return;
-    }
-
-    // Validate JSON before saving
-    let jsonData;
-    try {
-      jsonData = JSON.parse(text);
-    } catch (parseError) {
-      showStatus(`Invalid JSON: ${parseError.message}`, 'error');
-      return;
-    }
-
-    const result = await window.jsonAPI.writeFile({
-      filePath: currentFilePath,
-      jsonData: jsonData
-    });
-
-    if (result.success) {
-      updateFileInfo(result.filePath);
-      showStatus(`File saved: ${result.filePath.split('/').pop() || result.filePath.split('\\').pop()}`, 'success');
-    } else {
-      showStatus(`Save failed: ${result.error}`, 'error');
-    }
-  } catch (error) {
-    showStatus(`Error saving file: ${error.message}`, 'error');
-  }
-});
-
-formatBtn.addEventListener('click', () => {
-  try {
-    const text = jsonEditor.value.trim();
-    if (!text) {
-      showStatus('No content to format', 'error');
-      return;
-    }
-
-    const jsonData = JSON.parse(text);
-    jsonEditor.value = JSON.stringify(jsonData, null, 2);
-    if (isViewMode) {
-      updateJsonViewer();
-    } else {
-      updateEditorHighlight();
-    }
-    showStatus('JSON formatted successfully', 'success');
-  } catch (error) {
-    showStatus(`Format failed: ${error.message}`, 'error');
-  }
-});
-
-validateBtn.addEventListener('click', () => {
-  const text = jsonEditor.value.trim();
-  if (!text) {
-    showStatus('No content to validate', 'error');
-    return;
-  }
-
-  const validation = validateJsonWithErrors(text);
-  if (validation.valid) {
-    showStatus('✓ JSON is valid', 'success');
-  } else {
-    const errorCount = validation.errors.length;
-    showStatus(`✗ Found ${errorCount} error${errorCount > 1 ? 's' : ''} in JSON`, 'error');
-  }
-});
-
-// Button event listeners
-themeBtn.addEventListener('click', toggleTheme);
-copyBtn.addEventListener('click', copyFormattedJson);
-downloadBtn.addEventListener('click', downloadJson);
-expandAllBtn.addEventListener('click', expandAll);
-collapseAllBtn.addEventListener('click', collapseAll);
-clearBtn.addEventListener('click', clearEditor);
-
-editModeBtn.addEventListener('click', () => switchMode('edit'));
-viewModeBtn.addEventListener('click', () => switchMode('view'));
-
-// Option toggles
-showLineNumbersCheckbox.addEventListener('change', toggleLineNumbers);
-autoFormatCheckbox.addEventListener('change', toggleAutoFormat);
-smartFoldingCheckbox.addEventListener('change', toggleSmartFolding);
-
-// Real-time updates
-jsonEditor.addEventListener('input', updateEditorHighlight);
-jsonEditor.addEventListener('scroll', syncScroll);
-
-// Enhanced keyboard shortcuts
-document.addEventListener('keydown', (e) => {
+// Handle keyboard shortcuts
+function handleKeyboardShortcuts(e) {
   if (e.ctrlKey || e.metaKey) {
     switch (e.key) {
-      case 'n':
-        e.preventDefault();
-        newBtn.click();
+      case 'c':
+        if (!isEditMode && currentJsonFile) {
+          e.preventDefault();
+          copyJsonToClipboard();
+        }
         break;
-      case 'o':
-        e.preventDefault();
-        openBtn.click();
+      case 'e':
+        if (!isEditMode && currentJsonFile) {
+          e.preventDefault();
+          enterEditMode();
+        }
         break;
       case 's':
-        e.preventDefault();
-        saveBtn.click();
-        break;
-      case 'f':
-        if (!e.shiftKey) {
+        if (isEditMode) {
           e.preventDefault();
-          formatBtn.click();
+          saveJsonChanges();
         }
-        break;
-      case 'v':
-        if (e.shiftKey) {
-          e.preventDefault();
-          switchMode(isViewMode ? 'edit' : 'view');
-        }
-        break;
-      case 'd':
-        if (e.shiftKey) {
-          e.preventDefault();
-          toggleTheme();
-        }
-        break;
-      case 'l':
-        e.preventDefault();
-        showLineNumbersCheckbox.click();
         break;
     }
   }
   
-  // Escape key to exit view mode
-  if (e.key === 'Escape' && isViewMode) {
-    switchMode('edit');
+  // Escape key to cancel edit
+  if (e.key === 'Escape' && isEditMode) {
+    cancelEdit();
   }
-});
+}
 
-// Mobile touch support
-let touchStartY = 0;
-jsonEditor.addEventListener('touchstart', (e) => {
-  touchStartY = e.touches[0].clientY;
-});
+// Select a schema
+function selectSchema(schemaId) {
+  currentSchema = schemaId;
+  currentJsonFile = null;
+  renderSchemaTree();
+  renderJsonFilesList();
+  renderJsonContent();
+}
 
-jsonEditor.addEventListener('touchmove', (e) => {
-  const touchY = e.touches[0].clientY;
-  const deltaY = touchStartY - touchY;
+// Select a JSON file
+function selectJsonFile(filePath) {
+  // Exit edit mode when selecting a different file
+  if (isEditMode) {
+    exitEditMode();
+  }
   
-  // Smooth scrolling on mobile
-  jsonEditor.scrollTop += deltaY * 0.5;
-  syncScroll();
+  currentJsonFile = filePath;
   
-  touchStartY = touchY;
-});
+  // Force re-validation of the selected file
+  const fileData = getCurrentFileData();
+  if (fileData && currentSchema && schemaData[currentSchema]) {
+    console.log(`Re-validating selected file: ${filePath}`);
+    const schema = schemaData[currentSchema];
+    const compiledSchema = validator.compile(schema.content);
+    
+    if (fileData.content) {
+      fileData.valid = compiledSchema(fileData.content);
+      if (!fileData.valid) {
+        fileData.errors = compiledSchema.errors;
+        fileData.analyzedErrors = analyzeValidationErrors(compiledSchema.errors, schema.content, fileData.content);
+        console.log(`Re-validation found ${fileData.errors.length} errors:`, fileData.errors);
+      } else {
+        fileData.errors = null;
+        fileData.analyzedErrors = null;
+        console.log('Re-validation passed');
+      }
+    }
+  }
+  
+  renderJsonFilesList();
+  renderJsonContent();
+}
+
+// Toggle folder expansion
+function toggleFolder(folderElement) {
+  folderElement.classList.toggle('expanded');
+  folderElement.classList.toggle('collapsed');
+}
+
+// Show context menu
+function showContextMenu(x, y, schemaId) {
+  currentSchema = schemaId;
+  contextMenu.style.left = x + 'px';
+  contextMenu.style.top = y + 'px';
+  contextMenu.style.display = 'block';
+}
+
+// Hide context menu
+function hideContextMenu() {
+  contextMenu.style.display = 'none';
+}
+
+// View schema content
+function viewSchema(schemaId) {
+  const schema = schemaData[schemaId];
+  if (schema && schema.content) {
+    // Create a temporary view of the schema
+    const jsonString = JSON.stringify(schema.content, null, 2);
+    const highlightedJson = highlightJson(jsonString);
+    
+    jsonViewer.innerHTML = `
+      <div style="margin-bottom: 16px; padding: 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--linear-accent); border-radius: 6px;">
+        <strong>Viewing Schema: ${schema.name}</strong>
+      </div>
+      ${highlightedJson}
+    `;
+    
+    rightPanelTitle.textContent = `Schema: ${schema.name}`;
+    validationStatus.innerHTML = '<span style="color: var(--linear-accent);">Schema Definition</span>';
+  }
+}
+
+// Setup resize handles for panels
+function setupResizeHandles() {
+  const leftResize = document.getElementById('leftResize');
+  const middleResize = document.getElementById('middleResize');
+  const leftPanel = document.querySelector('.left-panel');
+  const middlePanel = document.querySelector('.middle-panel');
+  
+  let isResizing = false;
+  let currentHandle = null;
+  
+  function startResize(e, handle) {
+    isResizing = true;
+    currentHandle = handle;
+    document.addEventListener('mousemove', doResize);
+    document.addEventListener('mouseup', stopResize);
+    e.preventDefault();
+  }
+  
+  function doResize(e) {
+    if (!isResizing) return;
+    
+    const containerRect = document.querySelector('.app-container').getBoundingClientRect();
+    const mouseX = e.clientX - containerRect.left;
+    
+    if (currentHandle === leftResize) {
+      const newWidth = Math.max(250, Math.min(400, mouseX));
+      leftPanel.style.width = newWidth + 'px';
+    } else if (currentHandle === middleResize) {
+      const leftWidth = leftPanel.offsetWidth;
+      const newWidth = Math.max(300, Math.min(500, mouseX - leftWidth - 4));
+      middlePanel.style.width = newWidth + 'px';
+    }
+  }
+  
+  function stopResize() {
+    isResizing = false;
+    currentHandle = null;
+    document.removeEventListener('mousemove', doResize);
+    document.removeEventListener('mouseup', stopResize);
+  }
+  
+  leftResize.addEventListener('mousedown', (e) => startResize(e, leftResize));
+  middleResize.addEventListener('mousedown', (e) => startResize(e, middleResize));
+}
+
+// Show status message
+function showStatus(message, type = 'info', duration = 3000) {
+  statusBar.textContent = message;
+  statusBar.className = `status-bar show ${type}`;
+  
+  setTimeout(() => {
+    statusBar.classList.remove('show');
+  }, duration);
+}
+
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializeApp);
 
 // Global functions for HTML onclick
-window.toggleExpand = toggleExpand;
+window.toggleErrorCategory = toggleErrorCategory;
 
-// Initialize with dark theme and syntax highlighting enabled by default
-document.body.classList.remove('light-theme');
-themeBtn.textContent = 'Light Theme';
-updateFileInfo();
-updateEditorHighlight();
-
-// Load demo data on first run
-if (!jsonEditor.value.trim()) {
-  jsonEditor.value = `{
-  "name": "ManyJson Demo",
-  "version": "2.0.0",
-  "features": [
-    "Real-time syntax highlighting",
-    "Intelligent error detection",
-    "Smart folding",
-    "Mobile responsive design"
-  ],
-  "settings": {
-    "theme": "dark",
-    "autoFormat": true,
-    "lineNumbers": true
-  },
-  "status": "ready"
-}`;
-  updateEditorHighlight();
-  showStatus('Welcome to ManyJson! Demo data loaded.', 'info', 4000);
+// App info display
+if (window.appInfo) {
+  console.log(`${window.appInfo.name} v${window.appInfo.version}`);
 }
