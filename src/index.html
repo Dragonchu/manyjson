@@ -11,11 +11,106 @@
     .container { flex: 1; display: flex; flex-direction: column; max-width: 1200px; margin: 0 auto; width: 100%; }
     .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
     .editor-container { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); padding: 20px; }
-    .json-editor { flex: 1; width: 100%; min-height: 400px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 14px; resize: vertical; }
+    
+    /* JSON Editor Styles */
+    .json-editor { 
+      flex: 1; 
+      width: 100%; 
+      min-height: 400px; 
+      padding: 15px; 
+      border: 1px solid #ddd; 
+      border-radius: 8px; 
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace; 
+      font-size: 14px; 
+      resize: vertical; 
+      background: #fafafa;
+    }
+    
+    /* JSON Viewer Styles */
+    .json-viewer {
+      flex: 1;
+      min-height: 400px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 14px;
+      background: #fafafa;
+      overflow: auto;
+      white-space: pre;
+      line-height: 1.5;
+    }
+    
+    .json-viewer.dark-theme {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-color: #333;
+    }
+    
+    /* JSON Syntax Highlighting */
+    .json-key { color: #0066cc; font-weight: 500; }
+    .json-string { color: #22863a; }
+    .json-number { color: #e36209; }
+    .json-boolean { color: #6f42c1; }
+    .json-null { color: #6a737d; }
+    .json-punctuation { color: #24292e; }
+    .json-brace { color: #24292e; font-weight: bold; }
+    
+    /* Dark theme syntax colors */
+    .json-viewer.dark-theme .json-key { color: #4fc1ff; }
+    .json-viewer.dark-theme .json-string { color: #9ecbff; }
+    .json-viewer.dark-theme .json-number { color: #ffab70; }
+    .json-viewer.dark-theme .json-boolean { color: #b392f0; }
+    .json-viewer.dark-theme .json-null { color: #959da5; }
+    .json-viewer.dark-theme .json-punctuation { color: #e1e4e8; }
+    .json-viewer.dark-theme .json-brace { color: #e1e4e8; }
+    
+    /* Expand/Collapse functionality */
+    .json-expandable {
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .json-expand-icon {
+      display: inline-block;
+      width: 12px;
+      margin-right: 4px;
+      text-align: center;
+      font-size: 10px;
+      color: #666;
+    }
+    
+    .json-collapsed .json-content {
+      display: none;
+    }
+    
+    .json-line {
+      position: relative;
+    }
+    
+    .json-line:hover {
+      background: rgba(0, 102, 204, 0.1);
+    }
+    
+    /* Error highlighting */
+    .json-error {
+      background: #ffeaea;
+      border-left: 3px solid #dc3545;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    
+    .json-error-line {
+      background: rgba(220, 53, 69, 0.1);
+      border-left: 3px solid #dc3545;
+    }
+    
     .status { margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 14px; }
     .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     .muted { color: #666; }
+    
     button { 
       padding: 10px 16px; 
       border-radius: 8px; 
@@ -29,12 +124,39 @@
     .primary-btn { background: #007bff; color: white; border-color: #007bff; }
     .primary-btn:hover:not(:disabled) { background: #0056b3; }
     .file-info { margin-bottom: 10px; font-size: 14px; color: #666; }
+    
+    .view-toggle {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    
+    .view-toggle button {
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+    
+    .view-toggle button.active {
+      background: #007bff;
+      color: white;
+    }
+    
+    .utility-buttons {
+      display: flex;
+      gap: 5px;
+      margin-left: auto;
+    }
+    
+    .utility-buttons button {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>ManyJson (Electron)</h1>
-    <p class="muted">JSON 文件编辑器 - 支持读取和写入 JSON 文件</p>
+    <p class="muted">JSON 文件编辑器 - 支持语法高亮、展开折叠、错误提示</p>
     <p class="muted">来自 preload 的应用信息：<code id="appInfo"></code></p>
   </div>
   
@@ -45,15 +167,32 @@
       <button id="saveBtn" class="primary-btn">保存文件</button>
       <button id="formatBtn">格式化 JSON</button>
       <button id="validateBtn">验证 JSON</button>
+      <button id="themeBtn">切换主题</button>
+      
+      <div class="utility-buttons">
+        <button id="copyBtn">复制格式化JSON</button>
+        <button id="downloadBtn">下载文件</button>
+        <button id="expandAllBtn">展开全部</button>
+        <button id="collapseAllBtn">折叠全部</button>
+      </div>
     </div>
     
     <div class="editor-container">
       <div class="file-info" id="fileInfo">未打开文件</div>
+      
+      <div class="view-toggle">
+        <button id="editModeBtn" class="active">编辑模式</button>
+        <button id="viewModeBtn">预览模式</button>
+      </div>
+      
       <textarea 
         id="jsonEditor" 
         class="json-editor" 
         placeholder="在此输入或编辑 JSON 数据...&#10;&#10;示例：&#10;{&#10;  &quot;name&quot;: &quot;示例&quot;,&#10;  &quot;version&quot;: &quot;1.0.0&quot;,&#10;  &quot;items&quot;: [1, 2, 3]&#10;}"
       ></textarea>
+      
+      <div id="jsonViewer" class="json-viewer" style="display: none;"></div>
+      
       <div class="status" id="status" style="display: none;"></div>
     </div>
   </div>

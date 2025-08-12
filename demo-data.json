@@ -1,0 +1,67 @@
+{
+  "title": "JSON 语法高亮测试数据",
+  "version": "2.0.1",
+  "enabled": true,
+  "disabled": false,
+  "count": 42,
+  "price": 99.99,
+  "rating": -1,
+  "nullValue": null,
+  "emptyString": "",
+  "description": "这是一个包含各种数据类型的测试文件，用于验证 JSON 语法高亮功能。包括字符串、数字、布尔值、null值、数组和嵌套对象。",
+  "features": [
+    "语法高亮",
+    "展开折叠",
+    "错误提示",
+    "主题切换",
+    "复制下载"
+  ],
+  "numbers": [1, 2, 3, 4, 5],
+  "mixed": [
+    "字符串",
+    123,
+    true,
+    null,
+    {
+      "nested": "对象"
+    }
+  ],
+  "settings": {
+    "theme": "auto",
+    "fontSize": 14,
+    "lineHeight": 1.5,
+    "autoSave": true,
+    "features": {
+      "syntaxHighlighting": true,
+      "errorChecking": true,
+      "autoFormat": false,
+      "darkMode": null
+    },
+    "shortcuts": {
+      "save": "Ctrl+S",
+      "format": "Ctrl+F",
+      "toggle": "Ctrl+Shift+V"
+    }
+  },
+  "metadata": {
+    "created": "2024-01-20T10:00:00Z",
+    "lastModified": "2024-01-20T15:30:00Z",
+    "author": {
+      "name": "ManyJson Editor",
+      "version": "0.1.0",
+      "contact": {
+        "email": "support@manyjson.com",
+        "website": "https://manyjson.com"
+      }
+    },
+    "tags": ["json", "editor", "syntax-highlighting", "electron"],
+    "stats": {
+      "lines": 50,
+      "characters": 1200,
+      "objects": 5,
+      "arrays": 3
+    }
+  },
+  "emptyObjects": {},
+  "emptyArray": []
+}
