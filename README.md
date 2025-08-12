@@ -258,9 +258,10 @@ The application features a sophisticated validation analyzer that goes beyond si
 
 ### Smart Error Messages
 Instead of cryptic validation messages, the analyzer provides human-readable explanations:
-- ❌ `"Required field 'email' is missing"` instead of `"should have required property 'email'"`
-- ❌ `"Type mismatch: expected string, got number"` with visual type comparison
-- ⚠️ `"Unexpected field 'extraProperty' found"` with list of allowed fields
+- ❌ `"Missing required field 'email'"` with detailed field requirements
+- ❌ `"Wrong data type: expected string, but got number"` with visual type comparison
+- ⚠️ `"Unexpected field 'extraProperty' is not allowed"` with list of allowed fields
+- 🔧 Context-specific fix suggestions for each error type
 
 ### Error Prevention & Guidance
 - **Proactive Suggestions**: Context-aware recommendations for each error type

@@ -28,7 +28,6 @@ const contextMenu = document.getElementById('contextMenu');
 // Buttons
 const addSchemaBtn = document.getElementById('addSchemaBtn');
 const refreshBtn = document.getElementById('refreshBtn');
-const debugBtn = document.getElementById('debugBtn');
 const copyJsonBtn = document.getElementById('copyJsonBtn');
 const editModeBtn = document.getElementById('editModeBtn');
 const saveJsonBtn = document.getElementById('saveJsonBtn');
@@ -372,31 +371,35 @@ function analyzeIndividualError(error, schema, data) {
     case 'required':
       analyzed.category = 'missing';
       analyzed.severity = 'critical';
-      analyzed.message = `Required field '${error.params.missingProperty}' is missing`;
+      const missingField = error.params.missingProperty;
+      analyzed.message = `Missing required field "${missingField}"`;
       analyzed.details = {
-        missingField: error.params.missingProperty,
+        missingField: missingField,
         location: analyzed.path,
-        schemaRequirement: getSchemaRequirement(schema, analyzed.path, error.params.missingProperty)
+        schemaRequirement: getSchemaRequirement(schema, analyzed.path, missingField)
       };
       analyzed.suggestions = [
-        `Add the required field '${error.params.missingProperty}'`,
-        `Check if the field name is spelled correctly`
+        `Add the "${missingField}" field to the JSON object`,
+        `Verify the field name spelling matches the schema exactly`,
+        `Check if the field should be nested in a different object`
       ];
       break;
 
     case 'additionalProperties':
       analyzed.category = 'extra';
       analyzed.severity = 'warning';
-      analyzed.message = `Unexpected field '${error.params.additionalProperty}' found`;
+      const extraField = error.params.additionalProperty;
+      analyzed.message = `Unexpected field "${extraField}" is not allowed`;
       analyzed.details = {
-        extraField: error.params.additionalProperty,
+        extraField: extraField,
         location: analyzed.path,
         allowedFields: getAllowedFields(schema, analyzed.path)
       };
       analyzed.suggestions = [
-        `Remove the extra field '${error.params.additionalProperty}'`,
-        `Check if this field belongs to a different object`,
-        `Update the schema to allow this field if it's intentional`
+        `Remove the "${extraField}" field from the JSON object`,
+        `Check if "${extraField}" belongs in a different part of the structure`,
+        `Verify the field name spelling against the schema`,
+        `Consider updating the schema if this field should be allowed`
       ];
       break;
 
@@ -405,18 +408,33 @@ function analyzeIndividualError(error, schema, data) {
       analyzed.severity = 'critical';
       const expectedType = Array.isArray(error.schema) ? error.schema.join(' or ') : error.schema;
       const actualType = getActualType(data, analyzed.path);
-      analyzed.message = `Type mismatch: expected ${expectedType}, got ${actualType}`;
+      const currentValue = getValueAtPath(data, analyzed.path);
+      analyzed.message = `Wrong data type: expected ${expectedType}, but got ${actualType}`;
       analyzed.details = {
         expectedType: expectedType,
         actualType: actualType,
         location: analyzed.path,
-        value: getValueAtPath(data, analyzed.path)
+        value: currentValue
       };
-      analyzed.suggestions = [
-        `Convert the value to ${expectedType} type`,
-        `Check if the data structure is correct`,
-        `Verify the field contains the expected data format`
-      ];
+      
+      // Provide type-specific suggestions
+      let suggestions = [];
+      if (expectedType === 'string' && actualType === 'number') {
+        suggestions.push(`Convert the number ${currentValue} to a string: "${currentValue}"`);
+      } else if (expectedType === 'number' && actualType === 'string') {
+        suggestions.push(`Convert the string "${currentValue}" to a number`);
+      } else if (expectedType === 'boolean' && actualType === 'string') {
+        suggestions.push(`Use true or false instead of "${currentValue}"`);
+      } else if (expectedType === 'array' && actualType !== 'array') {
+        suggestions.push(`Wrap the value in square brackets to make it an array: [${JSON.stringify(currentValue)}]`);
+      } else {
+        suggestions.push(`Change the value to match the expected ${expectedType} type`);
+      }
+      
+      suggestions.push(`Check the schema requirements for this field`);
+      suggestions.push(`Verify the data source provides the correct type`);
+      
+      analyzed.suggestions = suggestions;
       break;
 
     case 'enum':
@@ -556,12 +574,14 @@ function renderValidationAnalysis(analysis) {
   // Header with summary
   html += `
     <div class="validation-errors-header">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-        <line x1="12" y1="9" x2="12" y2="13"></line>
-        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-      </svg>
-      Validation Failed - ${summary.total} issue${summary.total > 1 ? 's' : ''} found
+      <div class="validation-errors-header-left">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span>Validation Failed</span>
+      </div>
       <div class="validation-summary">
         ${summary.critical > 0 ? `
           <div class="summary-stat">
@@ -712,8 +732,8 @@ function renderErrorItem(error) {
       <div class="error-item-header">
         ${icon}
         <div class="error-message">
-          ${error.message}
-          ${error.path !== 'root' ? `<div class="error-path">Path: ${error.path}</div>` : ''}
+          <div class="error-message-text">${error.message}</div>
+          ${error.path && error.path !== 'root' ? `<div class="error-path">Location: ${error.path}</div>` : ''}
         </div>
       </div>
   `;
@@ -722,25 +742,39 @@ function renderErrorItem(error) {
   if (error.category === 'type' && error.details.expectedType && error.details.actualType) {
     html += `
       <div class="error-details">
-        <div class="type-comparison">
-          <span class="type-expected">Expected: ${error.details.expectedType}</span>
-          <span class="type-arrow">→</span>
-          <span class="type-actual">Actual: ${error.details.actualType}</span>
+        <div class="error-details-section">
+          <div class="error-details-label">Type Mismatch</div>
+          <div class="type-comparison">
+            <span class="type-expected">Expected: ${error.details.expectedType}</span>
+            <span class="type-arrow">→</span>
+            <span class="type-actual">Actual: ${error.details.actualType}</span>
+          </div>
         </div>
-        ${error.details.value !== undefined ? `<div style="margin-top: 4px;">Current value: <code>${JSON.stringify(error.details.value)}</code></div>` : ''}
+        ${error.details.value !== undefined ? `
+          <div class="error-details-section">
+            <div class="error-details-label">Current Value</div>
+            <code style="background: rgba(255,255,255,0.05); padding: 4px 6px; border-radius: 3px; font-size: 11px;">${JSON.stringify(error.details.value)}</code>
+          </div>
+        ` : ''}
       </div>
     `;
-  } else if (error.category === 'extra' && error.details.allowedFields) {
+  } else if (error.category === 'extra' && error.details.allowedFields && error.details.allowedFields.length > 0) {
     html += `
       <div class="error-details">
-        <div>Allowed fields: ${error.details.allowedFields.join(', ')}</div>
+        <div class="error-details-section">
+          <div class="error-details-label">Allowed Fields</div>
+          <div>${error.details.allowedFields.map(field => `<code style="background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-right: 4px;">${field}</code>`).join('')}</div>
+        </div>
       </div>
     `;
   } else if (error.category === 'missing' && error.details.schemaRequirement) {
     html += `
       <div class="error-details">
-        <div>Required type: ${error.details.schemaRequirement.type}</div>
-        ${error.details.schemaRequirement.description ? `<div>Description: ${error.details.schemaRequirement.description}</div>` : ''}
+        <div class="error-details-section">
+          <div class="error-details-label">Field Requirements</div>
+          <div>Type: <code style="background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 3px; font-size: 11px;">${error.details.schemaRequirement.type}</code></div>
+          ${error.details.schemaRequirement.description ? `<div style="margin-top: 4px; font-style: italic;">${error.details.schemaRequirement.description}</div>` : ''}
+        </div>
       </div>
     `;
   }
@@ -749,8 +783,12 @@ function renderErrorItem(error) {
   if (error.suggestions && error.suggestions.length > 0) {
     html += `
       <div class="error-details">
-        <div style="font-weight: 500; margin-bottom: 4px;">Suggestions:</div>
-        ${error.suggestions.map(suggestion => `<div>• ${suggestion}</div>`).join('')}
+        <div class="error-details-section">
+          <div class="error-details-label">How to Fix</div>
+          <div>
+            ${error.suggestions.map(suggestion => `<div style="margin-bottom: 2px;">• ${suggestion}</div>`).join('')}
+          </div>
+        </div>
       </div>
     `;
   }
@@ -910,14 +948,6 @@ function renderJsonContent() {
   
   // Update validation status
   let validationHtml = '';
-  
-  console.log('File data for validation status:', {
-    name: fileData.name,
-    valid: fileData.valid,
-    hasErrors: !!fileData.errors,
-    errorCount: fileData.errors ? fileData.errors.length : 0,
-    hasAnalyzedErrors: !!fileData.analyzedErrors
-  });
   
   if (fileData.valid === true) {
     validationHtml = `
@@ -1159,37 +1189,7 @@ function setupEventListeners() {
     showStatus('Refreshed successfully', 'success');
   });
   
-  debugBtn.addEventListener('click', () => {
-    console.log('=== DEBUG INFO ===');
-    console.log('Current schema:', currentSchema);
-    console.log('Current JSON file:', currentJsonFile);
-    console.log('Schema data:', schemaData);
-    console.log('JSON files data:', jsonFiles);
-    console.log('Validator:', validator);
-    
-    if (currentSchema && currentJsonFile) {
-      const fileData = getCurrentFileData();
-      console.log('Current file data:', fileData);
-      
-      if (fileData && fileData.content) {
-        console.log('File content:', fileData.content);
-        
-        const schema = schemaData[currentSchema];
-        if (schema && schema.content) {
-          console.log('Schema content:', schema.content);
-          
-          // Test validation manually
-          const compiledSchema = validator.compile(schema.content);
-          const isValid = compiledSchema(fileData.content);
-          console.log('Manual validation result:', isValid);
-          console.log('Manual validation errors:', compiledSchema.errors);
-        }
-      }
-    }
-    
-    showStatus('Debug info logged to console', 'info');
-  });
-  
+
   // JSON editor buttons
   copyJsonBtn.addEventListener('click', copyJsonToClipboard);
   editModeBtn.addEventListener('click', enterEditMode);
