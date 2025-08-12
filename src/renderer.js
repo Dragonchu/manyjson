@@ -28,6 +28,7 @@ const contextMenu = document.getElementById('contextMenu');
 // Buttons
 const addSchemaBtn = document.getElementById('addSchemaBtn');
 const refreshBtn = document.getElementById('refreshBtn');
+const debugBtn = document.getElementById('debugBtn');
 const copyJsonBtn = document.getElementById('copyJsonBtn');
 const editModeBtn = document.getElementById('editModeBtn');
 const saveJsonBtn = document.getElementById('saveJsonBtn');
@@ -36,11 +37,10 @@ const cancelEditBtn = document.getElementById('cancelEditBtn');
 // Initialize the application
 async function initializeApp() {
   try {
-    // Load AJV for JSON Schema validation
-    if (typeof window !== 'undefined' && window.require) {
-      const Ajv = window.require('ajv');
-      validator = new Ajv({ allErrors: true, verbose: true });
-    }
+    // Initialize a simple JSON Schema validator
+    // Since AJV is not available in the sandboxed environment, 
+    // we'll create a basic validator for demonstration
+    validator = createBasicValidator();
     
     await loadSchemas();
     await loadJsonFiles();
@@ -51,6 +51,125 @@ async function initializeApp() {
     console.error('Failed to initialize app:', error);
     showStatus('Failed to initialize application', 'error');
   }
+}
+
+// Create a basic JSON Schema validator for demonstration
+function createBasicValidator() {
+  return {
+    compile: function(schema) {
+      return function validate(data) {
+        const errors = [];
+        validateObject(data, schema, '', errors);
+        validate.errors = errors;
+        return errors.length === 0;
+      };
+    }
+  };
+}
+
+// Basic validation function
+function validateObject(data, schema, path, errors) {
+  if (!schema || typeof schema !== 'object') return;
+  
+  // Check required fields
+  if (schema.required && Array.isArray(schema.required)) {
+    for (const field of schema.required) {
+      if (!data || !(field in data)) {
+        errors.push({
+          keyword: 'required',
+          instancePath: path,
+          params: { missingProperty: field },
+          message: `should have required property '${field}'`
+        });
+      }
+    }
+  }
+  
+  // Check properties
+  if (schema.properties && data && typeof data === 'object') {
+    for (const [key, value] of Object.entries(data)) {
+      const fieldPath = path ? `${path}/${key}` : `/${key}`;
+      const fieldSchema = schema.properties[key];
+      
+      if (fieldSchema) {
+        // Type validation
+        if (fieldSchema.type) {
+          const actualType = getDataType(value);
+          if (actualType !== fieldSchema.type) {
+            errors.push({
+              keyword: 'type',
+              instancePath: fieldPath,
+              schema: fieldSchema.type,
+              data: value,
+              message: `should be ${fieldSchema.type}`
+            });
+          }
+        }
+        
+        // String validation
+        if (fieldSchema.type === 'string' && typeof value === 'string') {
+          if (fieldSchema.minLength && value.length < fieldSchema.minLength) {
+            errors.push({
+              keyword: 'minLength',
+              instancePath: fieldPath,
+              schema: fieldSchema.minLength,
+              data: value,
+              message: `should NOT be shorter than ${fieldSchema.minLength} characters`
+            });
+          }
+          
+          if (fieldSchema.format === 'email' && !isValidEmail(value)) {
+            errors.push({
+              keyword: 'format',
+              instancePath: fieldPath,
+              schema: 'email',
+              data: value,
+              message: 'should match format "email"'
+            });
+          }
+        }
+        
+        // Number validation
+        if (fieldSchema.type === 'number' && typeof value === 'number') {
+          if (fieldSchema.minimum !== undefined && value < fieldSchema.minimum) {
+            errors.push({
+              keyword: 'minimum',
+              instancePath: fieldPath,
+              schema: fieldSchema.minimum,
+              data: value,
+              message: `should be >= ${fieldSchema.minimum}`
+            });
+          }
+        }
+        
+        // Recursive validation for objects
+        if (fieldSchema.type === 'object' && typeof value === 'object') {
+          validateObject(value, fieldSchema, fieldPath, errors);
+        }
+      } else if (schema.additionalProperties === false) {
+        // Extra field validation
+        errors.push({
+          keyword: 'additionalProperties',
+          instancePath: path,
+          params: { additionalProperty: key },
+          message: 'should NOT have additional properties'
+        });
+      }
+    }
+  }
+}
+
+// Helper function to get data type
+function getDataType(value) {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+// Simple email validation
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 
 // Load all schema files
@@ -129,18 +248,24 @@ async function loadJsonFiles() {
 // Load a JSON file (simulated file system access)
 async function loadJsonFile(filename) {
   try {
+    console.log(`Attempting to load file: ${filename}`);
+    
     // In Electron, we would use fs.readFile
     // For demo, we'll simulate loading from the actual files
     if (window.electronAPI && window.electronAPI.readFile) {
-      return await window.electronAPI.readFile(filename);
+      const result = await window.electronAPI.readFile(filename);
+      console.log(`Loaded ${filename} via electronAPI:`, result);
+      return result;
     }
     
     // Fallback: fetch from current directory
     const response = await fetch(filename);
     if (!response.ok) {
-      throw new Error(`Failed to load ${filename}`);
+      throw new Error(`Failed to load ${filename}: ${response.status} ${response.statusText}`);
     }
-    return await response.json();
+    const data = await response.json();
+    console.log(`Loaded ${filename} via fetch:`, data);
+    return data;
   } catch (error) {
     console.error(`Failed to load ${filename}:`, error);
     return null;
@@ -149,24 +274,40 @@ async function loadJsonFile(filename) {
 
 // Validate all JSON files against their associated schemas
 async function validateAllFiles() {
-  if (!validator) return;
+  if (!validator) {
+    console.log('No validator available');
+    return;
+  }
   
   for (const schemaId in jsonFiles) {
     const schema = schemaData[schemaId];
-    if (!schema || !schema.content) continue;
+    if (!schema || !schema.content) {
+      console.log(`No schema found for ${schemaId}`);
+      continue;
+    }
     
+    console.log(`Validating files for schema: ${schemaId}`);
     const compiledSchema = validator.compile(schema.content);
     
     for (const jsonFile of jsonFiles[schemaId]) {
       if (jsonFile.content) {
+        console.log(`Validating file: ${jsonFile.name}`);
         jsonFile.valid = compiledSchema(jsonFile.content);
+        
         if (!jsonFile.valid) {
           jsonFile.errors = compiledSchema.errors;
           jsonFile.analyzedErrors = analyzeValidationErrors(compiledSchema.errors, schema.content, jsonFile.content);
+          console.log(`File ${jsonFile.name} has ${jsonFile.errors.length} errors:`, jsonFile.errors);
         } else {
           jsonFile.errors = null;
           jsonFile.analyzedErrors = null;
+          console.log(`File ${jsonFile.name} is valid`);
         }
+      } else {
+        console.log(`File ${jsonFile.name} has no content`);
+        jsonFile.valid = null;
+        jsonFile.errors = null;
+        jsonFile.analyzedErrors = null;
       }
     }
   }
@@ -769,15 +910,25 @@ function renderJsonContent() {
   
   // Update validation status
   let validationHtml = '';
+  
+  console.log('File data for validation status:', {
+    name: fileData.name,
+    valid: fileData.valid,
+    hasErrors: !!fileData.errors,
+    errorCount: fileData.errors ? fileData.errors.length : 0,
+    hasAnalyzedErrors: !!fileData.analyzedErrors
+  });
+  
   if (fileData.valid === true) {
     validationHtml = `
       <div class="status-icon valid"></div>
       <span class="status-valid">Valid JSON</span>
     `;
   } else if (fileData.valid === false) {
+    const errorCount = fileData.errors ? fileData.errors.length : 0;
     validationHtml = `
       <div class="status-icon invalid"></div>
-      <span class="status-invalid">Invalid JSON (${fileData.errors.length} errors)</span>
+      <span class="status-invalid">Invalid JSON (${errorCount} errors)</span>
     `;
   } else {
     validationHtml = `
@@ -1008,6 +1159,37 @@ function setupEventListeners() {
     showStatus('Refreshed successfully', 'success');
   });
   
+  debugBtn.addEventListener('click', () => {
+    console.log('=== DEBUG INFO ===');
+    console.log('Current schema:', currentSchema);
+    console.log('Current JSON file:', currentJsonFile);
+    console.log('Schema data:', schemaData);
+    console.log('JSON files data:', jsonFiles);
+    console.log('Validator:', validator);
+    
+    if (currentSchema && currentJsonFile) {
+      const fileData = getCurrentFileData();
+      console.log('Current file data:', fileData);
+      
+      if (fileData && fileData.content) {
+        console.log('File content:', fileData.content);
+        
+        const schema = schemaData[currentSchema];
+        if (schema && schema.content) {
+          console.log('Schema content:', schema.content);
+          
+          // Test validation manually
+          const compiledSchema = validator.compile(schema.content);
+          const isValid = compiledSchema(fileData.content);
+          console.log('Manual validation result:', isValid);
+          console.log('Manual validation errors:', compiledSchema.errors);
+        }
+      }
+    }
+    
+    showStatus('Debug info logged to console', 'info');
+  });
+  
   // JSON editor buttons
   copyJsonBtn.addEventListener('click', copyJsonToClipboard);
   editModeBtn.addEventListener('click', enterEditMode);
@@ -1091,6 +1273,28 @@ function selectJsonFile(filePath) {
   }
   
   currentJsonFile = filePath;
+  
+  // Force re-validation of the selected file
+  const fileData = getCurrentFileData();
+  if (fileData && currentSchema && schemaData[currentSchema]) {
+    console.log(`Re-validating selected file: ${filePath}`);
+    const schema = schemaData[currentSchema];
+    const compiledSchema = validator.compile(schema.content);
+    
+    if (fileData.content) {
+      fileData.valid = compiledSchema(fileData.content);
+      if (!fileData.valid) {
+        fileData.errors = compiledSchema.errors;
+        fileData.analyzedErrors = analyzeValidationErrors(compiledSchema.errors, schema.content, fileData.content);
+        console.log(`Re-validation found ${fileData.errors.length} errors:`, fileData.errors);
+      } else {
+        fileData.errors = null;
+        fileData.analyzedErrors = null;
+        console.log('Re-validation passed');
+      }
+    }
+  }
+  
   renderJsonFilesList();
   renderJsonContent();
 }
