@@ -1,0 +1,21 @@
+{
+  "name": "测试数据",
+  "version": "1.0.0",
+  "description": "这是一个用于测试 JSON 文件读写功能的示例文件",
+  "features": [
+    "JSON 文件读取",
+    "JSON 文件写入",
+    "JSON 格式验证",
+    "JSON 格式化"
+  ],
+  "settings": {
+    "autoSave": true,
+    "theme": "light",
+    "fontSize": 14
+  },
+  "metadata": {
+    "created": "2024-01-20",
+    "lastModified": "2024-01-20",
+    "author": "ManyJson Editor"
+  }
+}

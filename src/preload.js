@@ -4,15 +4,15 @@
   - 后续如需与主进程通信，可扩展 ipcRenderer 调用
 */
 
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('appInfo', {
   name: 'ManyJson',
   version: '0.1.0',
 });
 
-// 示例：如需与主进程通信，可在此处封装调用
-// const { ipcRenderer } = require('electron');
-// contextBridge.exposeInMainWorld('api', {
-//   ping: () => ipcRenderer.invoke('ping'),
-// });
+// 暴露 JSON 文件操作 API
+contextBridge.exposeInMainWorld('jsonAPI', {
+  writeFile: (data) => ipcRenderer.invoke('write-json-file', data),
+  readFile: (filePath) => ipcRenderer.invoke('read-json-file', filePath),
+});

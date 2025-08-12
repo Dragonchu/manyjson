@@ -4,8 +4,9 @@
   - 使用 preload.js 提供安全的渲染进程桥接
 */
 
-const { app, BrowserWindow, nativeTheme } = require('electron');
+const { app, BrowserWindow, nativeTheme, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs').promises;
 
 /**
  * 创建主窗口
@@ -35,6 +36,67 @@ function createMainWindow() {
 
   return mainWindow;
 }
+
+// IPC 处理程序
+ipcMain.handle('write-json-file', async (event, data) => {
+  try {
+    const { filePath, jsonData } = data;
+    
+    if (!filePath) {
+      // 如果没有提供文件路径，打开保存对话框
+      const result = await dialog.showSaveDialog({
+        title: '保存 JSON 文件',
+        defaultPath: 'data.json',
+        filters: [
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+      
+      if (result.canceled) {
+        return { success: false, error: '用户取消了保存操作' };
+      }
+      
+      const selectedPath = result.filePath;
+      await fs.writeFile(selectedPath, JSON.stringify(jsonData, null, 2), 'utf8');
+      return { success: true, filePath: selectedPath };
+    } else {
+      // 使用提供的文件路径
+      await fs.writeFile(filePath, JSON.stringify(jsonData, null, 2), 'utf8');
+      return { success: true, filePath };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('read-json-file', async (event, filePath) => {
+  try {
+    if (!filePath) {
+      // 如果没有提供文件路径，打开文件选择对话框
+      const result = await dialog.showOpenDialog({
+        title: '选择 JSON 文件',
+        filters: [
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+      
+      if (result.canceled) {
+        return { success: false, error: '用户取消了文件选择' };
+      }
+      
+      filePath = result.filePaths[0];
+    }
+    
+    const content = await fs.readFile(filePath, 'utf8');
+    const jsonData = JSON.parse(content);
+    return { success: true, data: jsonData, filePath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
 // 应用准备就绪后创建窗口
 app.whenReady().then(() => {
