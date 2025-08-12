@@ -16,3 +16,8 @@ contextBridge.exposeInMainWorld('jsonAPI', {
   writeFile: (data) => ipcRenderer.invoke('write-json-file', data),
   readFile: (filePath) => ipcRenderer.invoke('read-json-file', filePath),
 });
+
+// 暴露文件系统 API for schema manager
+contextBridge.exposeInMainWorld('electronAPI', {
+  readFile: (filename) => ipcRenderer.invoke('read-file-sync', filename),
+});

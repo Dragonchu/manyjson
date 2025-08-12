@@ -13,12 +13,12 @@ const fs = require('fs').promises;
  */
 function createMainWindow() {
   const mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 700,
-    minWidth: 900,
-    minHeight: 600,
-    title: 'ManyJson',
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#ffffff',
+    width: 1200,
+    height: 800,
+    minWidth: 1000,
+    minHeight: 700,
+    title: 'ManyJson - JSON Schema Manager',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff',
     webPreferences: {
       // 使用 preload 注入安全的 API，而非直接开启 nodeIntegration
       preload: path.join(__dirname, 'preload.js'),
@@ -95,6 +95,19 @@ ipcMain.handle('read-json-file', async (event, filePath) => {
     return { success: true, data: jsonData, filePath };
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+// Simple file reader for schema manager
+ipcMain.handle('read-file-sync', async (event, filename) => {
+  try {
+    // Read from the root directory where the JSON files are located
+    const filePath = path.join(process.cwd(), filename);
+    const content = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error(`Failed to read ${filename}:`, error);
+    return null;
   }
 });
 

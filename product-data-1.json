@@ -1,0 +1,15 @@
+{
+  "id": "PRD-123456",
+  "title": "Wireless Bluetooth Headphones",
+  "description": "High-quality wireless headphones with noise cancellation",
+  "price": 199.99,
+  "currency": "USD",
+  "category": "electronics",
+  "inStock": true,
+  "specifications": {
+    "brand": "TechCorp",
+    "model": "WH-1000XM4",
+    "color": "Black",
+    "batteryLife": "30 hours"
+  }
+}

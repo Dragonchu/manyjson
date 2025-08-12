@@ -1,0 +1,11 @@
+{
+  "name": "",
+  "email": "invalid-email",
+  "age": -5,
+  "isActive": "yes",
+  "address": {
+    "street": "123 Main St"
+  },
+  "tags": ["developer", "developer"],
+  "extraField": "not allowed"
+}
