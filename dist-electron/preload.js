@@ -1,0 +1,1 @@
+"use strict";const o=require("electron"),n={writeJsonFile:(e,i)=>o.ipcRenderer.invoke("write-json-file",e,i),showOpenDialog:e=>o.ipcRenderer.invoke("show-open-dialog",e),showSaveDialog:e=>o.ipcRenderer.invoke("show-save-dialog",e)};o.contextBridge.exposeInMainWorld("electronAPI",n);
