@@ -61,4 +61,19 @@ docs/latex/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Node / Electron
+node_modules/
+dist/
+out/
+release/
+.nyc_output/
+coverage/
+*.tgz
+*.pid
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+ 
