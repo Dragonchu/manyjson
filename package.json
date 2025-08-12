@@ -16,11 +16,12 @@
     "clean": "rm -rf node_modules dist dist-electron out release"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.2.0",
-    "pinia": "^2.1.0",
     "ajv": "^8.12.0",
-    "ajv-formats": "^3.0.1"
+    "ajv-formats": "^3.0.1",
+    "pinia": "^2.1.0",
+    "puppeteer": "^24.16.1",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
