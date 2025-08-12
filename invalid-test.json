@@ -1,0 +1,15 @@
+{
+  "name": "测试文件",
+  "version": "1.0.0",
+  "items": [
+    "item1",
+    "item2",
+    "item3",  // 这里有多余的逗号
+  ],
+  "settings": {
+    "enabled": true,
+    "count": 42,
+    "description": "这是一个故意包含错误的 JSON 文件"  // 缺少逗号
+    "theme": "dark"
+  }
+}
