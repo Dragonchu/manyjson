@@ -25,20 +25,26 @@
         <div class="empty-state-description">Add JSON schemas to get started</div>
       </div>
     </div>
+    
+    <!-- Add Schema Dialog -->
+    <AddSchemaDialog ref="addSchemaDialog" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
+import AddSchemaDialog from './AddSchemaDialog.vue'
 
 const appStore = useAppStore()
+const addSchemaDialog = ref<InstanceType<typeof AddSchemaDialog>>()
 
 function selectSchema(schema: SchemaInfo) {
   appStore.setCurrentSchema(schema)
 }
 
 function handleAddSchema() {
-  appStore.showStatus('Add schema functionality coming soon', 'info')
+  addSchemaDialog.value?.showDialog()
 }
 
 function handleRefresh() {

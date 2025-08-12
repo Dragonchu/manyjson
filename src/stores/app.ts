@@ -328,6 +328,77 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function addSchema(name: string, content: any): Promise<boolean> {
+    try {
+      // Ensure the name ends with .json
+      const schemaName = name.endsWith('.json') ? name : `${name}.json`
+      const schemaPath = `/workspace/${schemaName}`
+      
+      // Check if schema with this name already exists
+      const existingSchema = schemas.value.find(s => s.name === schemaName)
+      if (existingSchema) {
+        showStatus(`Schema "${schemaName}" already exists`, 'error')
+        return false
+      }
+      
+      // Validate the schema content
+      try {
+        if (typeof content === 'string') {
+          content = JSON.parse(content)
+        }
+        
+        // Basic schema validation - ensure it has required JSON Schema properties
+        if (!content || typeof content !== 'object') {
+          showStatus('Invalid schema content: must be a valid JSON object', 'error')
+          return false
+        }
+        
+        // Add $schema if not present
+        if (!content.$schema) {
+          content.$schema = 'http://json-schema.org/draft-07/schema#'
+        }
+        
+        // Ensure it has a type property
+        if (!content.type) {
+          content.type = 'object'
+        }
+      } catch (parseError) {
+        showStatus('Invalid schema content: must be valid JSON', 'error')
+        return false
+      }
+      
+      if (window.electronAPI) {
+        // Save to file system using Electron API
+        const result = await window.electronAPI.writeJsonFile(schemaPath, JSON.stringify(content, null, 2))
+        if (!result.success) {
+          showStatus(`Failed to create schema file: ${result.error}`, 'error')
+          return false
+        }
+      }
+      
+      // Create new schema object
+      const newSchema: SchemaInfo = {
+        name: schemaName,
+        path: schemaPath,
+        content: content,
+        associatedFiles: []
+      }
+      
+      // Add to schemas array
+      schemas.value.push(newSchema)
+      
+      // Set as current schema
+      setCurrentSchema(newSchema)
+      
+      showStatus(`Schema "${schemaName}" created successfully`, 'success')
+      return true
+    } catch (error) {
+      console.error('Failed to add schema:', error)
+      showStatus('Failed to create schema', 'error')
+      return false
+    }
+  }
+
   return {
     // State
     currentSchema,
@@ -354,6 +425,7 @@ export const useAppStore = defineStore('app', () => {
     loadJsonFiles,
     saveJsonFile,
     deleteSchema,
-    deleteJsonFile
+    deleteJsonFile,
+    addSchema
   }
 })

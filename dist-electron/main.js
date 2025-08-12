@@ -1,1 +1,84 @@
-"use strict";const e=require("electron"),a=require("path"),i=require("fs"),l=process.env.NODE_ENV==="development";function s(){const n=new e.BrowserWindow({width:1200,height:800,minWidth:1e3,minHeight:700,title:"ManyJson - JSON Schema Manager",backgroundColor:e.nativeTheme.shouldUseDarkColors?"#0a0a0a":"#ffffff",webPreferences:{preload:a.join(__dirname,"preload.js"),contextIsolation:!0,sandbox:!0,nodeIntegration:!1}});return l?(n.loadURL("http://localhost:5173"),n.webContents.openDevTools()):n.loadFile(a.join(__dirname,"../dist/index.html")),n}e.ipcMain.handle("write-json-file",async(n,o,r)=>{try{return await i.promises.writeFile(o,r,"utf8"),{success:!0}}catch(t){return console.error("Failed to write file:",t),{success:!1,error:t instanceof Error?t.message:"Unknown error"}}});e.ipcMain.handle("show-open-dialog",async(n,o)=>{try{return await e.dialog.showOpenDialog(o)}catch(r){return console.error("Failed to show open dialog:",r),{canceled:!0,filePaths:[]}}});e.ipcMain.handle("show-save-dialog",async(n,o)=>{try{return await e.dialog.showSaveDialog(o)}catch(r){return console.error("Failed to show save dialog:",r),{canceled:!0,filePath:void 0}}});e.ipcMain.handle("delete-file",async(n,o)=>{try{return await i.promises.unlink(o),{success:!0}}catch(r){return console.error("Failed to delete file:",r),{success:!1,error:r instanceof Error?r.message:"Unknown error"}}});e.app.whenReady().then(()=>{s(),e.app.on("activate",()=>{e.BrowserWindow.getAllWindows().length===0&&s()})});e.app.on("window-all-closed",()=>{process.platform!=="darwin"&&e.app.quit()});e.app.on("web-contents-created",(n,o)=>{o.on("new-window",(r,t)=>{r.preventDefault(),console.warn("Blocked new window creation:",t)})});
+"use strict";
+const electron = require("electron");
+const path = require("path");
+const fs = require("fs");
+const isDev = process.env.NODE_ENV === "development";
+function createMainWindow() {
+  const mainWindow = new electron.BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 1e3,
+    minHeight: 700,
+    title: "ManyJson - JSON Schema Manager",
+    backgroundColor: electron.nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff",
+    webPreferences: {
+      // 使用 preload 注入安全的 API，而非直接开启 nodeIntegration
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false
+    }
+  });
+  if (isDev) {
+    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
+  }
+  return mainWindow;
+}
+electron.ipcMain.handle("write-json-file", async (event, filePath, content) => {
+  try {
+    await fs.promises.writeFile(filePath, content, "utf8");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to write file:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+});
+electron.ipcMain.handle("show-open-dialog", async (event, options) => {
+  try {
+    const result = await electron.dialog.showOpenDialog(options);
+    return result;
+  } catch (error) {
+    console.error("Failed to show open dialog:", error);
+    return { canceled: true, filePaths: [] };
+  }
+});
+electron.ipcMain.handle("show-save-dialog", async (event, options) => {
+  try {
+    const result = await electron.dialog.showSaveDialog(options);
+    return result;
+  } catch (error) {
+    console.error("Failed to show save dialog:", error);
+    return { canceled: true, filePath: void 0 };
+  }
+});
+electron.ipcMain.handle("delete-file", async (event, filePath) => {
+  try {
+    await fs.promises.unlink(filePath);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete file:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+});
+electron.app.whenReady().then(() => {
+  createMainWindow();
+  electron.app.on("activate", () => {
+    if (electron.BrowserWindow.getAllWindows().length === 0) {
+      createMainWindow();
+    }
+  });
+});
+electron.app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    electron.app.quit();
+  }
+});
+electron.app.on("web-contents-created", (event, contents) => {
+  contents.on("new-window", (event2, navigationUrl) => {
+    event2.preventDefault();
+    console.warn("Blocked new window creation:", navigationUrl);
+  });
+});

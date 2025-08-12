@@ -66,4 +66,78 @@ describe('App Store', () => {
     expect(store.statusMessage).toBe('Test message')
     expect(store.statusType).toBe('success')
   })
+
+  it('should add a new schema successfully', async () => {
+    const store = useAppStore()
+    
+    const schemaName = 'test-schema'
+    const schemaContent = {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' }
+      },
+      required: ['id', 'name']
+    }
+
+    const result = await store.addSchema(schemaName, schemaContent)
+    
+    expect(result).toBe(true)
+    expect(store.schemas).toHaveLength(1)
+    expect(store.schemas[0].name).toBe('test-schema.json')
+    expect(store.schemas[0].path).toBe('/workspace/test-schema.json')
+    expect(store.schemas[0].content).toEqual({
+      ...schemaContent,
+      $schema: 'http://json-schema.org/draft-07/schema#'
+    })
+    expect(store.currentSchema).toEqual(store.schemas[0])
+  })
+
+  it('should handle adding schema with string content', async () => {
+    const store = useAppStore()
+    
+    const schemaName = 'string-schema'
+    const schemaContent = JSON.stringify({
+      type: 'object',
+      properties: {
+        test: { type: 'string' }
+      }
+    })
+
+    const result = await store.addSchema(schemaName, schemaContent)
+    
+    expect(result).toBe(true)
+    expect(store.schemas).toHaveLength(1)
+    expect(store.schemas[0].content.type).toBe('object')
+    expect(store.schemas[0].content.$schema).toBe('http://json-schema.org/draft-07/schema#')
+  })
+
+  it('should prevent adding duplicate schema names', async () => {
+    const store = useAppStore()
+    
+    const schemaName = 'duplicate-schema'
+    const schemaContent = { type: 'object' }
+
+    // Add first schema
+    await store.addSchema(schemaName, schemaContent)
+    expect(store.schemas).toHaveLength(1)
+
+    // Try to add duplicate
+    const result = await store.addSchema(schemaName, schemaContent)
+    
+    expect(result).toBe(false)
+    expect(store.schemas).toHaveLength(1) // Should still be 1
+  })
+
+  it('should handle invalid schema content', async () => {
+    const store = useAppStore()
+    
+    const schemaName = 'invalid-schema'
+    const invalidContent = 'invalid json content'
+
+    const result = await store.addSchema(schemaName, invalidContent)
+    
+    expect(result).toBe(false)
+    expect(store.schemas).toHaveLength(0)
+  })
 })
