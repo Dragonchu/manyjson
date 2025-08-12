@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ManyJson</title>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    body { display: flex; align-items: center; justify-content: center; background: #f5f5f7; color: #1f1f1f; }
+    .container { text-align: center; padding: 24px 32px; border-radius: 12px; background: white; box-shadow: 0 6px 24px rgba(0,0,0,0.08); }
+    .muted { color: #666; }
+    button { padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+    button:hover { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ManyJson (Electron)</h1>
+    <p class="muted">项目已切换为 Electron 结构。优先支持 macOS。</p>
+    <p class="muted">来自 preload 的应用信息：<code id="appInfo"></code></p>
+    <button id="helloBtn">点我试试</button>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
