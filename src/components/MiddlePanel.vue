@@ -16,6 +16,7 @@
           invalid: !file.isValid 
         }"
         @click="selectFile(file)"
+        @contextmenu.prevent="showContextMenu($event, file)"
       >
         <div class="json-file-name">{{ file.name }}</div>
         <div class="json-file-status">
@@ -51,6 +52,14 @@ const appStore = useAppStore()
 
 function selectFile(file: JsonFile) {
   appStore.setCurrentJsonFile(file)
+}
+
+function showContextMenu(event: MouseEvent, file: JsonFile) {
+  // Context menu functionality will be handled by ContextMenu component
+  const contextMenuEvent = new CustomEvent('show-context-menu', {
+    detail: { event, file, type: 'file' }
+  })
+  document.dispatchEvent(contextMenuEvent)
 }
 </script>
 
