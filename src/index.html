@@ -274,27 +274,74 @@
       flex-direction: column;
     }
 
-    .right-panel-header {
-      padding: 16px;
-      border-bottom: 1px solid var(--linear-border);
-      background: var(--linear-surface);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+         .right-panel-header {
+       padding: 16px;
+       border-bottom: 1px solid var(--linear-border);
+       background: var(--linear-surface);
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+     }
 
-    .right-panel-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--linear-text-primary);
-    }
+     .right-panel-title {
+       font-size: 14px;
+       font-weight: 600;
+       color: var(--linear-text-primary);
+     }
 
-    .validation-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-    }
+     .right-panel-controls {
+       display: flex;
+       align-items: center;
+       gap: 16px;
+     }
+
+     .validation-status {
+       display: flex;
+       align-items: center;
+       gap: 8px;
+       font-size: 12px;
+     }
+
+     .panel-actions {
+       display: flex;
+       align-items: center;
+       gap: 8px;
+     }
+
+     .action-btn {
+       padding: 8px;
+       background: var(--linear-surface);
+       border: 1px solid var(--linear-border);
+       border-radius: 6px;
+       color: var(--linear-text-secondary);
+       cursor: pointer;
+       transition: var(--linear-transition-fast);
+       display: flex;
+       align-items: center;
+       justify-content: center;
+     }
+
+     .action-btn:hover {
+       background: var(--linear-surface-hover);
+       border-color: var(--linear-border-hover);
+       color: var(--linear-text-primary);
+     }
+
+     .action-btn.primary {
+       background: var(--linear-accent);
+       border-color: var(--linear-accent);
+       color: white;
+     }
+
+     .action-btn.primary:hover {
+       background: var(--linear-accent-bright);
+       border-color: var(--linear-accent-bright);
+     }
+
+     .action-btn svg {
+       width: 16px;
+       height: 16px;
+     }
 
     .json-content {
       flex: 1;
@@ -306,14 +353,35 @@
       white-space: pre-wrap;
     }
 
-    .json-viewer {
-      background: var(--linear-surface);
-      border: 1px solid var(--linear-border);
-      border-radius: 8px;
-      padding: 16px;
-      height: 100%;
-      overflow: auto;
-    }
+         .json-viewer {
+       background: var(--linear-surface);
+       border: 1px solid var(--linear-border);
+       border-radius: 8px;
+       padding: 16px;
+       height: 100%;
+       overflow: auto;
+     }
+
+     .json-editor {
+       width: 100%;
+       height: 100%;
+       background: var(--linear-surface);
+       border: 1px solid var(--linear-border);
+       border-radius: 8px;
+       padding: 16px;
+       font-family: var(--linear-font-mono);
+       font-size: 13px;
+       line-height: 1.5;
+       color: var(--linear-text-primary);
+       resize: none;
+       outline: none;
+       tab-size: 2;
+     }
+
+     .json-editor:focus {
+       border-color: var(--linear-accent);
+       box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+     }
 
     /* JSON Syntax Highlighting */
     .json-key {
@@ -531,24 +599,54 @@
     <!-- Resize Handle -->
     <div class="resize-handle" id="middleResize"></div>
 
-    <!-- Right Panel - JSON Content View -->
-    <div class="right-panel">
-      <div class="right-panel-header">
-        <div class="right-panel-title" id="rightPanelTitle">JSON Content Viewer</div>
-        <div class="validation-status" id="validationStatus">
-          <!-- Validation status will be shown here -->
-        </div>
-      </div>
-      <div class="json-content">
-        <div class="json-viewer" id="jsonViewer">
-          <div class="empty-state">
-            <div class="empty-state-icon">🔍</div>
-            <div class="empty-state-title">No JSON File Selected</div>
-            <div class="empty-state-description">Select a JSON file from the middle panel to view its content and validation results</div>
-          </div>
-        </div>
-      </div>
-    </div>
+         <!-- Right Panel - JSON Content View -->
+     <div class="right-panel">
+       <div class="right-panel-header">
+         <div class="right-panel-title" id="rightPanelTitle">JSON Content Viewer</div>
+         <div class="right-panel-controls">
+           <div class="validation-status" id="validationStatus">
+             <!-- Validation status will be shown here -->
+           </div>
+           <div class="panel-actions">
+             <button class="action-btn" id="copyJsonBtn" title="Copy JSON">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+               </svg>
+             </button>
+             <button class="action-btn" id="editModeBtn" title="Edit JSON">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                 <path d="m18.5 2.5-3 3L22 12l-3-3-3-3z"></path>
+               </svg>
+             </button>
+             <button class="action-btn primary" id="saveJsonBtn" title="Save Changes" style="display: none;">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                 <polyline points="17,21 17,13 7,13 7,21"></polyline>
+                 <polyline points="7,3 7,8 15,8"></polyline>
+               </svg>
+             </button>
+             <button class="action-btn" id="cancelEditBtn" title="Cancel Edit" style="display: none;">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <line x1="18" y1="6" x2="6" y2="18"></line>
+                 <line x1="6" y1="6" x2="18" y2="18"></line>
+               </svg>
+             </button>
+           </div>
+         </div>
+       </div>
+       <div class="json-content">
+         <div class="json-viewer" id="jsonViewer">
+           <div class="empty-state">
+             <div class="empty-state-icon">🔍</div>
+             <div class="empty-state-title">No JSON File Selected</div>
+             <div class="empty-state-description">Select a JSON file from the middle panel to view its content and validation results</div>
+           </div>
+         </div>
+         <textarea class="json-editor" id="jsonEditor" style="display: none;" spellcheck="false"></textarea>
+       </div>
+     </div>
   </div>
 
   <!-- Context Menu -->
