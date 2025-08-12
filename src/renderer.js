@@ -162,9 +162,477 @@ async function validateAllFiles() {
         jsonFile.valid = compiledSchema(jsonFile.content);
         if (!jsonFile.valid) {
           jsonFile.errors = compiledSchema.errors;
+          jsonFile.analyzedErrors = analyzeValidationErrors(compiledSchema.errors, schema.content, jsonFile.content);
+        } else {
+          jsonFile.errors = null;
+          jsonFile.analyzedErrors = null;
         }
       }
     }
+  }
+}
+
+// Intelligent validation error analyzer
+function analyzeValidationErrors(ajvErrors, schema, data) {
+  const analysis = {
+    summary: {
+      total: ajvErrors.length,
+      critical: 0,
+      warnings: 0
+    },
+    categories: {
+      missingFields: [],
+      extraFields: [],
+      typeMismatches: [],
+      otherErrors: []
+    }
+  };
+
+  for (const error of ajvErrors) {
+    const analyzedError = analyzeIndividualError(error, schema, data);
+    
+    // Categorize errors
+    switch (analyzedError.category) {
+      case 'missing':
+        analysis.categories.missingFields.push(analyzedError);
+        analysis.summary.critical++;
+        break;
+      case 'extra':
+        analysis.categories.extraFields.push(analyzedError);
+        analysis.summary.warnings++;
+        break;
+      case 'type':
+        analysis.categories.typeMismatches.push(analyzedError);
+        analysis.summary.critical++;
+        break;
+      default:
+        analysis.categories.otherErrors.push(analyzedError);
+        analysis.summary.critical++;
+        break;
+    }
+  }
+
+  return analysis;
+}
+
+// Analyze individual validation error
+function analyzeIndividualError(error, schema, data) {
+  const analyzed = {
+    original: error,
+    category: 'other',
+    severity: 'critical',
+    path: error.instancePath || 'root',
+    message: '',
+    details: {},
+    suggestions: []
+  };
+
+  switch (error.keyword) {
+    case 'required':
+      analyzed.category = 'missing';
+      analyzed.severity = 'critical';
+      analyzed.message = `Required field '${error.params.missingProperty}' is missing`;
+      analyzed.details = {
+        missingField: error.params.missingProperty,
+        location: analyzed.path,
+        schemaRequirement: getSchemaRequirement(schema, analyzed.path, error.params.missingProperty)
+      };
+      analyzed.suggestions = [
+        `Add the required field '${error.params.missingProperty}'`,
+        `Check if the field name is spelled correctly`
+      ];
+      break;
+
+    case 'additionalProperties':
+      analyzed.category = 'extra';
+      analyzed.severity = 'warning';
+      analyzed.message = `Unexpected field '${error.params.additionalProperty}' found`;
+      analyzed.details = {
+        extraField: error.params.additionalProperty,
+        location: analyzed.path,
+        allowedFields: getAllowedFields(schema, analyzed.path)
+      };
+      analyzed.suggestions = [
+        `Remove the extra field '${error.params.additionalProperty}'`,
+        `Check if this field belongs to a different object`,
+        `Update the schema to allow this field if it's intentional`
+      ];
+      break;
+
+    case 'type':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      const expectedType = Array.isArray(error.schema) ? error.schema.join(' or ') : error.schema;
+      const actualType = getActualType(data, analyzed.path);
+      analyzed.message = `Type mismatch: expected ${expectedType}, got ${actualType}`;
+      analyzed.details = {
+        expectedType: expectedType,
+        actualType: actualType,
+        location: analyzed.path,
+        value: getValueAtPath(data, analyzed.path)
+      };
+      analyzed.suggestions = [
+        `Convert the value to ${expectedType} type`,
+        `Check if the data structure is correct`,
+        `Verify the field contains the expected data format`
+      ];
+      break;
+
+    case 'enum':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      analyzed.message = `Invalid value: must be one of ${error.schema.join(', ')}`;
+      analyzed.details = {
+        allowedValues: error.schema,
+        actualValue: error.data,
+        location: analyzed.path
+      };
+      analyzed.suggestions = [
+        `Use one of the allowed values: ${error.schema.join(', ')}`,
+        `Check for typos in the value`
+      ];
+      break;
+
+    case 'format':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      analyzed.message = `Invalid format: expected ${error.schema} format`;
+      analyzed.details = {
+        expectedFormat: error.schema,
+        actualValue: error.data,
+        location: analyzed.path
+      };
+      analyzed.suggestions = [
+        `Ensure the value matches the ${error.schema} format`,
+        `Check the value for correct syntax`
+      ];
+      break;
+
+    case 'minimum':
+    case 'maximum':
+      analyzed.category = 'type';
+      analyzed.severity = 'critical';
+      const comparison = error.keyword === 'minimum' ? 'at least' : 'at most';
+      analyzed.message = `Value must be ${comparison} ${error.schema}`;
+      analyzed.details = {
+        limit: error.schema,
+        actualValue: error.data,
+        location: analyzed.path
+      };
+      break;
+
+    default:
+      analyzed.message = error.message || 'Unknown validation error';
+      analyzed.details = {
+        keyword: error.keyword,
+        schema: error.schema,
+        data: error.data,
+        location: analyzed.path
+      };
+      break;
+  }
+
+  return analyzed;
+}
+
+// Helper functions for error analysis
+function getSchemaRequirement(schema, path, fieldName) {
+  try {
+    const schemaAtPath = getSchemaAtPath(schema, path);
+    if (schemaAtPath && schemaAtPath.properties && schemaAtPath.properties[fieldName]) {
+      return {
+        type: schemaAtPath.properties[fieldName].type,
+        description: schemaAtPath.properties[fieldName].description
+      };
+    }
+  } catch (e) {
+    // Ignore errors in schema traversal
+  }
+  return null;
+}
+
+function getAllowedFields(schema, path) {
+  try {
+    const schemaAtPath = getSchemaAtPath(schema, path);
+    if (schemaAtPath && schemaAtPath.properties) {
+      return Object.keys(schemaAtPath.properties);
+    }
+  } catch (e) {
+    // Ignore errors in schema traversal
+  }
+  return [];
+}
+
+function getSchemaAtPath(schema, path) {
+  if (!path || path === 'root') return schema;
+  
+  const pathParts = path.split('/').filter(part => part !== '');
+  let current = schema;
+  
+  for (const part of pathParts) {
+    if (current.properties && current.properties[part]) {
+      current = current.properties[part];
+    } else if (current.items) {
+      current = current.items;
+    } else {
+      return null;
+    }
+  }
+  
+  return current;
+}
+
+function getActualType(data, path) {
+  const value = getValueAtPath(data, path);
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function getValueAtPath(data, path) {
+  if (!path || path === 'root') return data;
+  
+  const pathParts = path.split('/').filter(part => part !== '');
+  let current = data;
+  
+  for (const part of pathParts) {
+    if (current && typeof current === 'object' && part in current) {
+      current = current[part];
+    } else {
+      return undefined;
+    }
+  }
+  
+  return current;
+}
+
+// Render intelligent validation analysis
+function renderValidationAnalysis(analysis) {
+  const { summary, categories } = analysis;
+  
+  let html = '<div class="validation-errors">';
+  
+  // Header with summary
+  html += `
+    <div class="validation-errors-header">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      Validation Failed - ${summary.total} issue${summary.total > 1 ? 's' : ''} found
+      <div class="validation-summary">
+        ${summary.critical > 0 ? `
+          <div class="summary-stat">
+            <svg class="summary-stat-icon" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            ${summary.critical} critical
+          </div>
+        ` : ''}
+        ${summary.warnings > 0 ? `
+          <div class="summary-stat">
+            <svg class="summary-stat-icon" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            ${summary.warnings} warnings
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  
+  html += '<div class="validation-errors-content">';
+  
+  // Missing Fields Category
+  if (categories.missingFields.length > 0) {
+    html += renderErrorCategory(
+      'missing-fields',
+      'Missing Required Fields',
+      'critical',
+      categories.missingFields,
+      `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      `
+    );
+  }
+  
+  // Type Mismatches Category
+  if (categories.typeMismatches.length > 0) {
+    html += renderErrorCategory(
+      'type-mismatches',
+      'Type Mismatches',
+      'critical',
+      categories.typeMismatches,
+      `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12l2 2 4-4"></path>
+          <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"></path>
+          <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"></path>
+        </svg>
+      `
+    );
+  }
+  
+  // Extra Fields Category
+  if (categories.extraFields.length > 0) {
+    html += renderErrorCategory(
+      'extra-fields',
+      'Unexpected Fields',
+      'warning',
+      categories.extraFields,
+      `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      `
+    );
+  }
+  
+  // Other Errors Category
+  if (categories.otherErrors.length > 0) {
+    html += renderErrorCategory(
+      'other-errors',
+      'Other Validation Errors',
+      'critical',
+      categories.otherErrors,
+      `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      `
+    );
+  }
+  
+  html += '</div></div>';
+  
+  return html;
+}
+
+// Render error category
+function renderErrorCategory(categoryId, title, severity, errors, icon) {
+  const severityClass = `error-severity-${severity}`;
+  
+  let html = `
+    <div class="error-category" data-category="${categoryId}">
+      <div class="error-category-header" onclick="toggleErrorCategory('${categoryId}')">
+        <div class="error-category-title">
+          <span class="${severityClass}">${icon}</span>
+          <span class="${severityClass}">${title}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="error-count-badge">${errors.length}</span>
+          <svg class="category-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9,18 15,12 9,6"></polyline>
+          </svg>
+        </div>
+      </div>
+      <div class="error-category-content">
+  `;
+  
+  for (const error of errors) {
+    html += renderErrorItem(error);
+  }
+  
+  html += '</div></div>';
+  
+  return html;
+}
+
+// Render individual error item
+function renderErrorItem(error) {
+  const severityClass = error.severity === 'critical' ? 'critical' : 'warning';
+  const icon = error.severity === 'critical' 
+    ? `<svg class="error-icon ${severityClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+         <circle cx="12" cy="12" r="10"></circle>
+         <line x1="15" y1="9" x2="9" y2="15"></line>
+         <line x1="9" y1="9" x2="15" y2="15"></line>
+       </svg>`
+    : `<svg class="error-icon ${severityClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+         <line x1="12" y1="9" x2="12" y2="13"></line>
+         <line x1="12" y1="17" x2="12.01" y2="17"></line>
+       </svg>`;
+  
+  let html = `
+    <div class="error-item">
+      <div class="error-item-header">
+        ${icon}
+        <div class="error-message">
+          ${error.message}
+          ${error.path !== 'root' ? `<div class="error-path">Path: ${error.path}</div>` : ''}
+        </div>
+      </div>
+  `;
+  
+  // Add detailed information based on error category
+  if (error.category === 'type' && error.details.expectedType && error.details.actualType) {
+    html += `
+      <div class="error-details">
+        <div class="type-comparison">
+          <span class="type-expected">Expected: ${error.details.expectedType}</span>
+          <span class="type-arrow">→</span>
+          <span class="type-actual">Actual: ${error.details.actualType}</span>
+        </div>
+        ${error.details.value !== undefined ? `<div style="margin-top: 4px;">Current value: <code>${JSON.stringify(error.details.value)}</code></div>` : ''}
+      </div>
+    `;
+  } else if (error.category === 'extra' && error.details.allowedFields) {
+    html += `
+      <div class="error-details">
+        <div>Allowed fields: ${error.details.allowedFields.join(', ')}</div>
+      </div>
+    `;
+  } else if (error.category === 'missing' && error.details.schemaRequirement) {
+    html += `
+      <div class="error-details">
+        <div>Required type: ${error.details.schemaRequirement.type}</div>
+        ${error.details.schemaRequirement.description ? `<div>Description: ${error.details.schemaRequirement.description}</div>` : ''}
+      </div>
+    `;
+  }
+  
+  // Add suggestions
+  if (error.suggestions && error.suggestions.length > 0) {
+    html += `
+      <div class="error-details">
+        <div style="font-weight: 500; margin-bottom: 4px;">Suggestions:</div>
+        ${error.suggestions.map(suggestion => `<div>• ${suggestion}</div>`).join('')}
+      </div>
+    `;
+  }
+  
+  html += '</div>';
+  
+  return html;
+}
+
+// Setup error category expansion listeners
+function setupErrorCategoryListeners() {
+  // Remove existing listeners to prevent duplicates
+  const existingListeners = document.querySelectorAll('.error-category-header');
+  existingListeners.forEach(header => {
+    header.replaceWith(header.cloneNode(true));
+  });
+}
+
+// Toggle error category expansion
+function toggleErrorCategory(categoryId) {
+  const category = document.querySelector(`[data-category="${categoryId}"]`);
+  if (category) {
+    category.classList.toggle('expanded');
   }
 }
 
@@ -229,7 +697,27 @@ function renderJsonFilesList() {
     const isSelected = currentJsonFile === file.path;
     const validClass = file.valid === true ? 'valid' : file.valid === false ? 'invalid' : '';
     const statusIcon = file.valid === true ? 'valid' : file.valid === false ? 'invalid' : '';
-    const statusText = file.valid === true ? 'Valid' : file.valid === false ? 'Invalid' : 'Not validated';
+    
+    let statusText = 'Not validated';
+    let errorSummary = '';
+    
+    if (file.valid === true) {
+      statusText = 'Valid';
+    } else if (file.valid === false && file.analyzedErrors) {
+      const analysis = file.analyzedErrors;
+      statusText = 'Invalid';
+      
+      const criticalCount = analysis.summary.critical;
+      const warningCount = analysis.summary.warnings;
+      
+      if (criticalCount > 0 && warningCount > 0) {
+        errorSummary = `${criticalCount} errors, ${warningCount} warnings`;
+      } else if (criticalCount > 0) {
+        errorSummary = `${criticalCount} error${criticalCount > 1 ? 's' : ''}`;
+      } else if (warningCount > 0) {
+        errorSummary = `${warningCount} warning${warningCount > 1 ? 's' : ''}`;
+      }
+    }
     
     html += `
       <div class="json-file-card ${isSelected ? 'selected' : ''} ${validClass}" data-file="${file.path}">
@@ -237,7 +725,7 @@ function renderJsonFilesList() {
         <div class="json-file-status">
           <div class="status-icon ${statusIcon}"></div>
           <span class="status-${validClass}">${statusText}</span>
-          ${file.errors ? `(${file.errors.length} errors)` : ''}
+          ${errorSummary ? `<span class="error-summary">(${errorSummary})</span>` : ''}
         </div>
       </div>
     `;
@@ -315,13 +803,9 @@ function renderJsonContent() {
     // Render content
     let contentHtml = '';
     
-    // Show validation errors if any
-    if (fileData.errors && fileData.errors.length > 0) {
-      contentHtml += '<div class="validation-errors">';
-      for (const error of fileData.errors) {
-        contentHtml += `<div class="validation-error">• ${error.instancePath || 'root'}: ${error.message}</div>`;
-      }
-      contentHtml += '</div>';
+    // Show intelligent validation analysis if any errors
+    if (fileData.analyzedErrors && fileData.analyzedErrors.summary.total > 0) {
+      contentHtml += renderValidationAnalysis(fileData.analyzedErrors);
     }
     
     // Show JSON content with syntax highlighting
@@ -332,6 +816,9 @@ function renderJsonContent() {
     }
     
     jsonViewer.innerHTML = contentHtml;
+    
+    // Add event listeners for error category expansion
+    setupErrorCategoryListeners();
   }
   
   updateEditButtons();
@@ -704,6 +1191,9 @@ function showStatus(message, type = 'info', duration = 3000) {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+// Global functions for HTML onclick
+window.toggleErrorCategory = toggleErrorCategory;
 
 // App info display
 if (window.appInfo) {
