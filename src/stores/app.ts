@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import Ajv from 'ajv'
+import addFormats from 'ajv-formats'
 
 export interface JsonFile {
   name: string
@@ -30,6 +31,7 @@ export const useAppStore = defineStore('app', () => {
 
   // JSON Schema validator
   const ajv = new Ajv({ allErrors: true })
+  addFormats(ajv)
 
   // Computed
   const hasCurrentSchema = computed(() => currentSchema.value !== null)
