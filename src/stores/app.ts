@@ -220,6 +220,114 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function deleteSchema(schema: SchemaInfo): Promise<boolean> {
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.deleteFile(schema.path)
+        if (result.success) {
+          // Remove the schema from the store
+          const schemaIndex = schemas.value.findIndex(s => s.path === schema.path)
+          if (schemaIndex !== -1) {
+            schemas.value.splice(schemaIndex, 1)
+          }
+          
+          // Clear current selection if the deleted schema was selected
+          if (currentSchema.value && currentSchema.value.path === schema.path) {
+            currentSchema.value = null
+            currentJsonFile.value = null
+          }
+          
+          showStatus(`Schema "${schema.name}" deleted successfully`, 'success')
+          return true
+        } else {
+          showStatus(`Failed to delete schema: ${result.error}`, 'error')
+          return false
+        }
+      } else {
+        // Fallback for web mode - just remove from store
+        const schemaIndex = schemas.value.findIndex(s => s.path === schema.path)
+        if (schemaIndex !== -1) {
+          schemas.value.splice(schemaIndex, 1)
+        }
+        
+        // Clear current selection if the deleted schema was selected
+        if (currentSchema.value && currentSchema.value.path === schema.path) {
+          currentSchema.value = null
+          currentJsonFile.value = null
+        }
+        
+        showStatus(`Schema "${schema.name}" deleted (mock)`, 'success')
+        return true
+      }
+    } catch (error) {
+      console.error('Failed to delete schema:', error)
+      showStatus('Failed to delete schema', 'error')
+      return false
+    }
+  }
+
+  async function deleteJsonFile(file: JsonFile): Promise<boolean> {
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.deleteFile(file.path)
+        if (result.success) {
+          // Remove the file from the store
+          const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+          if (fileIndex !== -1) {
+            jsonFiles.value.splice(fileIndex, 1)
+          }
+          
+          // Remove from associated schema
+          for (const schema of schemas.value) {
+            const associatedFileIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+            if (associatedFileIndex !== -1) {
+              schema.associatedFiles.splice(associatedFileIndex, 1)
+              break
+            }
+          }
+          
+          // Clear current selection if the deleted file was selected
+          if (currentJsonFile.value && currentJsonFile.value.path === file.path) {
+            currentJsonFile.value = null
+          }
+          
+          showStatus(`File "${file.name}" deleted successfully`, 'success')
+          return true
+        } else {
+          showStatus(`Failed to delete file: ${result.error}`, 'error')
+          return false
+        }
+      } else {
+        // Fallback for web mode - just remove from store
+        const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+        if (fileIndex !== -1) {
+          jsonFiles.value.splice(fileIndex, 1)
+        }
+        
+        // Remove from associated schema
+        for (const schema of schemas.value) {
+          const associatedFileIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+          if (associatedFileIndex !== -1) {
+            schema.associatedFiles.splice(associatedFileIndex, 1)
+            break
+          }
+        }
+        
+        // Clear current selection if the deleted file was selected
+        if (currentJsonFile.value && currentJsonFile.value.path === file.path) {
+          currentJsonFile.value = null
+        }
+        
+        showStatus(`File "${file.name}" deleted (mock)`, 'success')
+        return true
+      }
+    } catch (error) {
+      console.error('Failed to delete file:', error)
+      showStatus('Failed to delete file', 'error')
+      return false
+    }
+  }
+
   return {
     // State
     currentSchema,
@@ -244,6 +352,8 @@ export const useAppStore = defineStore('app', () => {
     validateJsonWithSchema,
     loadSchemas,
     loadJsonFiles,
-    saveJsonFile
+    saveJsonFile,
+    deleteSchema,
+    deleteJsonFile
   }
 })

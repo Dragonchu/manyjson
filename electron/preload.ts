@@ -19,6 +19,10 @@ const electronAPI = {
   // 保存文件对话框
   showSaveDialog: (options: any): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('show-save-dialog', options),
+
+  // 删除文件
+  deleteFile: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('delete-file', filePath),
 }
 
 // 通过 contextBridge 安全地暴露 API
