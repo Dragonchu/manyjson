@@ -416,17 +416,23 @@
      .validation-errors-header {
        background: rgba(239, 68, 68, 0.1);
        border-bottom: 1px solid var(--linear-border);
-       padding: 12px 16px;
-       font-size: 13px;
+       padding: 16px;
+       font-size: 14px;
        font-weight: 600;
        color: var(--linear-error);
+       display: flex;
+       align-items: center;
+       justify-content: space-between;
+     }
+
+     .validation-errors-header-left {
        display: flex;
        align-items: center;
        gap: 8px;
      }
 
      .validation-errors-content {
-       max-height: 300px;
+       max-height: 400px;
        overflow-y: auto;
      }
 
@@ -497,9 +503,10 @@
      }
 
      .error-item {
-       padding: 12px 16px;
+       padding: 16px;
        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-       font-size: 12px;
+       font-size: 13px;
+       line-height: 1.5;
      }
 
      .error-item:last-child {
@@ -509,15 +516,15 @@
      .error-item-header {
        display: flex;
        align-items: flex-start;
-       gap: 8px;
-       margin-bottom: 6px;
+       gap: 12px;
+       margin-bottom: 8px;
      }
 
      .error-icon {
-       width: 16px;
-       height: 16px;
+       width: 18px;
+       height: 18px;
        flex-shrink: 0;
-       margin-top: 1px;
+       margin-top: 2px;
      }
 
      .error-icon.critical {
@@ -530,58 +537,90 @@
 
      .error-message {
        flex: 1;
-       line-height: 1.4;
+       line-height: 1.5;
+     }
+
+     .error-message-text {
+       font-weight: 500;
+       color: var(--linear-text-primary);
+       margin-bottom: 4px;
      }
 
      .error-path {
        font-family: var(--linear-font-mono);
-       background: rgba(255, 255, 255, 0.05);
-       padding: 2px 6px;
-       border-radius: 4px;
-       font-size: 10px;
-       color: var(--linear-text-secondary);
-       margin-top: 4px;
-       display: inline-block;
-     }
-
-     .error-details {
-       margin-top: 6px;
-       padding: 8px;
-       background: rgba(255, 255, 255, 0.02);
+       background: rgba(255, 255, 255, 0.08);
+       padding: 4px 8px;
        border-radius: 4px;
        font-size: 11px;
        color: var(--linear-text-secondary);
+       margin-top: 6px;
+       display: inline-block;
+       border: 1px solid rgba(255, 255, 255, 0.1);
+     }
+
+     .error-details {
+       margin-top: 12px;
+       padding: 12px;
+       background: rgba(255, 255, 255, 0.03);
+       border-radius: 6px;
+       font-size: 12px;
+       color: var(--linear-text-secondary);
+       border-left: 3px solid var(--linear-border);
+     }
+
+     .error-details-section {
+       margin-bottom: 8px;
+     }
+
+     .error-details-section:last-child {
+       margin-bottom: 0;
+     }
+
+     .error-details-label {
+       font-weight: 500;
+       color: var(--linear-text-primary);
+       margin-bottom: 4px;
+       font-size: 11px;
+       text-transform: uppercase;
+       letter-spacing: 0.5px;
      }
 
      .type-comparison {
        display: flex;
        align-items: center;
-       gap: 8px;
-       margin-top: 4px;
+       gap: 12px;
+       margin-top: 8px;
+       padding: 8px;
+       background: rgba(255, 255, 255, 0.02);
+       border-radius: 4px;
      }
 
      .type-expected,
      .type-actual {
-       padding: 2px 6px;
-       border-radius: 3px;
+       padding: 4px 8px;
+       border-radius: 4px;
        font-family: var(--linear-font-mono);
-       font-size: 10px;
-       font-weight: 500;
+       font-size: 11px;
+       font-weight: 600;
+       border: 1px solid;
      }
 
      .type-expected {
-       background: rgba(16, 185, 129, 0.2);
+       background: rgba(16, 185, 129, 0.15);
        color: var(--linear-success);
+       border-color: rgba(16, 185, 129, 0.3);
      }
 
      .type-actual {
-       background: rgba(239, 68, 68, 0.2);
+       background: rgba(239, 68, 68, 0.15);
        color: var(--linear-error);
+       border-color: rgba(239, 68, 68, 0.3);
      }
 
      .type-arrow {
-       color: var(--linear-text-tertiary);
-       font-size: 10px;
+       color: var(--linear-text-secondary);
+       font-size: 12px;
+       font-weight: 600;
      }
 
      /* Summary Stats */
@@ -750,11 +789,10 @@
     <div class="left-panel">
       <div class="left-panel-header">
         <div class="left-panel-title">JSON Schema Manager</div>
-                 <div class="schema-actions">
-           <button class="btn-small" id="addSchemaBtn">Add</button>
-           <button class="btn-small" id="refreshBtn">Refresh</button>
-           <button class="btn-small" id="debugBtn" style="background: #f59e0b;">Debug</button>
-         </div>
+                                   <div class="schema-actions">
+            <button class="btn-small" id="addSchemaBtn">Add</button>
+            <button class="btn-small" id="refreshBtn">Refresh</button>
+          </div>
       </div>
       <div class="schema-tree" id="schemaTree">
         <!-- Schema tree will be populated here -->
