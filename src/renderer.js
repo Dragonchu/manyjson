@@ -733,64 +733,45 @@ function renderErrorItem(error) {
         ${icon}
         <div class="error-message">
           <div class="error-message-text">${error.message}</div>
-          ${error.path && error.path !== 'root' ? `<div class="error-path">Location: ${error.path}</div>` : ''}
+          ${error.path && error.path !== 'root' ? `<div class="error-path">${error.path}</div>` : ''}
         </div>
       </div>
   `;
   
-  // Add detailed information based on error category
+  // Consolidate information into a single details section
+  let detailsContent = '';
+  
+  // Type mismatch details
   if (error.category === 'type' && error.details.expectedType && error.details.actualType) {
-    html += `
-      <div class="error-details">
-        <div class="error-details-section">
-          <div class="error-details-label">Type Mismatch</div>
-          <div class="type-comparison">
-            <span class="type-expected">Expected: ${error.details.expectedType}</span>
-            <span class="type-arrow">→</span>
-            <span class="type-actual">Actual: ${error.details.actualType}</span>
-          </div>
-        </div>
-        ${error.details.value !== undefined ? `
-          <div class="error-details-section">
-            <div class="error-details-label">Current Value</div>
-            <code style="background: rgba(255,255,255,0.05); padding: 4px 6px; border-radius: 3px; font-size: 11px;">${JSON.stringify(error.details.value)}</code>
-          </div>
-        ` : ''}
+    detailsContent += `
+      <div class="type-comparison">
+        <span class="type-expected">${error.details.expectedType}</span>
+        <span class="type-arrow">→</span>
+        <span class="type-actual">${error.details.actualType}</span>
       </div>
     `;
-  } else if (error.category === 'extra' && error.details.allowedFields && error.details.allowedFields.length > 0) {
-    html += `
-      <div class="error-details">
-        <div class="error-details-section">
-          <div class="error-details-label">Allowed Fields</div>
-          <div>${error.details.allowedFields.map(field => `<code style="background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-right: 4px;">${field}</code>`).join('')}</div>
-        </div>
-      </div>
-    `;
-  } else if (error.category === 'missing' && error.details.schemaRequirement) {
-    html += `
-      <div class="error-details">
-        <div class="error-details-section">
-          <div class="error-details-label">Field Requirements</div>
-          <div>Type: <code style="background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 3px; font-size: 11px;">${error.details.schemaRequirement.type}</code></div>
-          ${error.details.schemaRequirement.description ? `<div style="margin-top: 4px; font-style: italic;">${error.details.schemaRequirement.description}</div>` : ''}
-        </div>
-      </div>
-    `;
+    if (error.details.value !== undefined) {
+      detailsContent += `<div style="margin-top: 4px; font-size: 10px;">Value: <code style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 2px;">${JSON.stringify(error.details.value)}</code></div>`;
+    }
   }
   
-  // Add suggestions
+  // Extra field details
+  else if (error.category === 'extra' && error.details.allowedFields && error.details.allowedFields.length > 0) {
+    detailsContent += `<div style="font-size: 10px;">Allowed: ${error.details.allowedFields.slice(0, 3).map(field => `<code style="background: rgba(255,255,255,0.08); padding: 1px 3px; border-radius: 2px; margin-right: 2px;">${field}</code>`).join('')}${error.details.allowedFields.length > 3 ? '...' : ''}</div>`;
+  }
+  
+  // Missing field details
+  else if (error.category === 'missing' && error.details.schemaRequirement) {
+    detailsContent += `<div style="font-size: 10px;">Required: <code style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 2px;">${error.details.schemaRequirement.type}</code></div>`;
+  }
+  
+  // Add the most important suggestion only
   if (error.suggestions && error.suggestions.length > 0) {
-    html += `
-      <div class="error-details">
-        <div class="error-details-section">
-          <div class="error-details-label">How to Fix</div>
-          <div>
-            ${error.suggestions.map(suggestion => `<div style="margin-bottom: 2px;">• ${suggestion}</div>`).join('')}
-          </div>
-        </div>
-      </div>
-    `;
+    detailsContent += `<div style="margin-top: 4px; font-size: 10px; font-style: italic; color: var(--linear-text-tertiary);">💡 ${error.suggestions[0]}</div>`;
+  }
+  
+  if (detailsContent) {
+    html += `<div class="error-details">${detailsContent}</div>`;
   }
   
   html += '</div>';
