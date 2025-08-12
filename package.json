@@ -1,0 +1,16 @@
+{
+  "name": "manyjson-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron app skeleton (converted from C++/CMake project)",
+  "main": "src/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "clean": "rm -rf node_modules dist out release"
+  },
+  "devDependencies": {
+    "electron": "28"
+  }
+}
