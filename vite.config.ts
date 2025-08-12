@@ -10,12 +10,15 @@ export default defineConfig({
       {
         entry: 'electron/main.ts',
         onstart(args) {
-          // Notify that Electron main process is ready
           args.startup()
         },
         vite: {
           build: {
             outDir: 'dist-electron',
+            lib: {
+              entry: 'electron/main.ts',
+              formats: ['cjs']
+            },
             rollupOptions: {
               external: ['electron']
             }
@@ -29,7 +32,11 @@ export default defineConfig({
         },
         vite: {
           build: {
-            outDir: 'dist-electron'
+            outDir: 'dist-electron',
+            lib: {
+              entry: 'electron/preload.ts',
+              formats: ['cjs']
+            }
           }
         }
       }
