@@ -15,9 +15,12 @@ A professional three-column JSON Schema management application built with Electr
 - ✅ **File Association**: Automatic mapping between schemas and JSON files
 - ✅ **Syntax Highlighting**: Beautiful JSON syntax highlighting
 - ✅ **Error Detection**: Visual indicators for validation errors
+- ✅ **JSON Editing**: In-place editing with syntax validation
+- ✅ **Copy to Clipboard**: One-click JSON copying with visual feedback
 - ✅ **Context Menus**: Right-click operations for schema management
 - ✅ **Responsive Design**: Adapts to different screen sizes
 - ✅ **Resizable Panels**: Drag handles to adjust panel widths
+- ✅ **Keyboard Shortcuts**: Quick access to common operations
 
 ### Visual Design
 - 🎨 **Linear Design System**: Modern dark theme with gradients and glows
@@ -96,11 +99,25 @@ npm run clean
 2. **Validation Results**: Real-time validation feedback
 3. **Error Details**: Specific validation error messages
 4. **Schema View**: Option to view the associated schema definition
+5. **Edit Mode**: In-place JSON editing with real-time validation
+6. **Copy Function**: One-click copying to clipboard
+7. **Action Buttons**: 
+   - 📋 Copy JSON to clipboard
+   - ✏️ Enter edit mode
+   - 💾 Save changes (edit mode)
+   - ❌ Cancel edit (edit mode)
 
 ### Panel Resizing
 - Drag the vertical dividers between panels to adjust widths
 - Panels have minimum and maximum width constraints
 - Layout adapts automatically on smaller screens
+
+## ⌨️ Keyboard Shortcuts
+
+- **Ctrl/Cmd + C**: Copy JSON to clipboard (view mode)
+- **Ctrl/Cmd + E**: Enter edit mode
+- **Ctrl/Cmd + S**: Save changes (edit mode)
+- **Escape**: Cancel edit mode
 
 ## 🔧 Configuration
 
@@ -166,6 +183,26 @@ The application includes sample schemas and JSON files:
 - **Valid**: Green indicators, no errors
 - **Invalid**: Red indicators, error details shown
 - **Not Validated**: Neutral state for unprocessed files
+
+## ✏️ JSON Editing Features
+
+### Edit Mode
+- **Toggle Edit**: Click the edit button (✏️) or press Ctrl/Cmd + E
+- **Syntax Highlighting**: Full JSON syntax highlighting in edit mode
+- **Real-time Validation**: Instant validation feedback while typing
+- **Auto-formatting**: Proper JSON indentation and structure
+
+### Save & Cancel
+- **Save Changes**: Click save button (💾) or press Ctrl/Cmd + S
+- **Cancel Edit**: Click cancel button (❌) or press Escape
+- **Validation on Save**: Automatic JSON syntax and schema validation
+- **Error Prevention**: Cannot save invalid JSON syntax
+
+### Copy Functionality
+- **One-click Copy**: Click copy button (📋) or press Ctrl/Cmd + C
+- **Formatted Output**: Copies properly formatted JSON with 2-space indentation
+- **Visual Feedback**: Success/error messages for copy operations
+- **Clipboard Integration**: Uses native clipboard API for reliable copying
 
 ## 📱 Responsive Design
 

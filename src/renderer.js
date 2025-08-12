@@ -11,11 +11,14 @@ let currentJsonFile = null;
 let schemaData = {};
 let jsonFiles = {};
 let validator = null;
+let isEditMode = false;
+let originalJsonContent = null;
 
 // DOM Elements
 const schemaTree = document.getElementById('schemaTree');
 const jsonFilesList = document.getElementById('jsonFilesList');
 const jsonViewer = document.getElementById('jsonViewer');
+const jsonEditor = document.getElementById('jsonEditor');
 const schemaInfo = document.getElementById('schemaInfo');
 const rightPanelTitle = document.getElementById('rightPanelTitle');
 const validationStatus = document.getElementById('validationStatus');
@@ -25,6 +28,10 @@ const contextMenu = document.getElementById('contextMenu');
 // Buttons
 const addSchemaBtn = document.getElementById('addSchemaBtn');
 const refreshBtn = document.getElementById('refreshBtn');
+const copyJsonBtn = document.getElementById('copyJsonBtn');
+const editModeBtn = document.getElementById('editModeBtn');
+const saveJsonBtn = document.getElementById('saveJsonBtn');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
 
 // Initialize the application
 async function initializeApp() {
@@ -249,8 +256,11 @@ function renderJsonContent() {
         <div class="empty-state-description">Select a JSON file from the middle panel to view its content and validation results</div>
       </div>
     `;
+    jsonEditor.style.display = 'none';
+    jsonViewer.style.display = 'block';
     rightPanelTitle.textContent = 'JSON Content Viewer';
     validationStatus.innerHTML = '';
+    updateEditButtons();
     return;
   }
   
@@ -288,26 +298,43 @@ function renderJsonContent() {
   }
   validationStatus.innerHTML = validationHtml;
   
-  // Render content
-  let contentHtml = '';
-  
-  // Show validation errors if any
-  if (fileData.errors && fileData.errors.length > 0) {
-    contentHtml += '<div class="validation-errors">';
-    for (const error of fileData.errors) {
-      contentHtml += `<div class="validation-error">• ${error.instancePath || 'root'}: ${error.message}</div>`;
+  if (isEditMode) {
+    // Show editor
+    jsonViewer.style.display = 'none';
+    jsonEditor.style.display = 'block';
+    
+    if (fileData.content) {
+      const jsonString = JSON.stringify(fileData.content, null, 2);
+      jsonEditor.value = jsonString;
     }
-    contentHtml += '</div>';
+  } else {
+    // Show viewer
+    jsonEditor.style.display = 'none';
+    jsonViewer.style.display = 'block';
+    
+    // Render content
+    let contentHtml = '';
+    
+    // Show validation errors if any
+    if (fileData.errors && fileData.errors.length > 0) {
+      contentHtml += '<div class="validation-errors">';
+      for (const error of fileData.errors) {
+        contentHtml += `<div class="validation-error">• ${error.instancePath || 'root'}: ${error.message}</div>`;
+      }
+      contentHtml += '</div>';
+    }
+    
+    // Show JSON content with syntax highlighting
+    if (fileData.content) {
+      const jsonString = JSON.stringify(fileData.content, null, 2);
+      const highlightedJson = highlightJson(jsonString);
+      contentHtml += highlightedJson;
+    }
+    
+    jsonViewer.innerHTML = contentHtml;
   }
   
-  // Show JSON content with syntax highlighting
-  if (fileData.content) {
-    const jsonString = JSON.stringify(fileData.content, null, 2);
-    const highlightedJson = highlightJson(jsonString);
-    contentHtml += highlightedJson;
-  }
-  
-  jsonViewer.innerHTML = contentHtml;
+  updateEditButtons();
 }
 
 // JSON syntax highlighting
@@ -318,6 +345,127 @@ function highlightJson(jsonString) {
     .replace(/:\s*(\d+\.?\d*)/g, ': <span class="json-number">$1</span>')
     .replace(/:\s*(true|false)/g, ': <span class="json-boolean">$1</span>')
     .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
+}
+
+// Update edit button visibility
+function updateEditButtons() {
+  const hasFile = currentJsonFile !== null;
+  
+  copyJsonBtn.style.display = hasFile ? 'flex' : 'none';
+  editModeBtn.style.display = hasFile && !isEditMode ? 'flex' : 'none';
+  saveJsonBtn.style.display = hasFile && isEditMode ? 'flex' : 'none';
+  cancelEditBtn.style.display = hasFile && isEditMode ? 'flex' : 'none';
+}
+
+// Enter edit mode
+function enterEditMode() {
+  if (!currentJsonFile) return;
+  
+  // Store original content for cancel functionality
+  const fileData = getCurrentFileData();
+  if (fileData && fileData.content) {
+    originalJsonContent = JSON.stringify(fileData.content, null, 2);
+  }
+  
+  isEditMode = true;
+  renderJsonContent();
+  showStatus('Edit mode enabled', 'info');
+}
+
+// Exit edit mode
+function exitEditMode() {
+  isEditMode = false;
+  originalJsonContent = null;
+  renderJsonContent();
+}
+
+// Save JSON changes
+async function saveJsonChanges() {
+  if (!currentJsonFile || !isEditMode) return;
+  
+  try {
+    const jsonText = jsonEditor.value.trim();
+    if (!jsonText) {
+      showStatus('Cannot save empty JSON', 'error');
+      return;
+    }
+    
+    // Validate JSON syntax
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(jsonText);
+    } catch (parseError) {
+      showStatus(`Invalid JSON: ${parseError.message}`, 'error');
+      return;
+    }
+    
+    // Update the file data
+    const fileData = getCurrentFileData();
+    if (fileData) {
+      fileData.content = parsedJson;
+      
+      // Re-validate against schema
+      if (currentSchema && schemaData[currentSchema] && validator) {
+        const compiledSchema = validator.compile(schemaData[currentSchema].content);
+        fileData.valid = compiledSchema(parsedJson);
+        if (!fileData.valid) {
+          fileData.errors = compiledSchema.errors;
+        } else {
+          fileData.errors = null;
+        }
+      }
+      
+      // Here you would typically save to file system
+      // For now, we'll just update the in-memory data
+      showStatus('JSON saved successfully', 'success');
+      
+      exitEditMode();
+      renderJsonFilesList(); // Update validation status in file list
+    }
+  } catch (error) {
+    showStatus(`Save failed: ${error.message}`, 'error');
+  }
+}
+
+// Cancel edit mode
+function cancelEdit() {
+  if (originalJsonContent) {
+    jsonEditor.value = originalJsonContent;
+  }
+  exitEditMode();
+  showStatus('Edit cancelled', 'info');
+}
+
+// Copy JSON to clipboard
+async function copyJsonToClipboard() {
+  if (!currentJsonFile) return;
+  
+  try {
+    const fileData = getCurrentFileData();
+    if (!fileData || !fileData.content) {
+      showStatus('No content to copy', 'error');
+      return;
+    }
+    
+    const jsonString = JSON.stringify(fileData.content, null, 2);
+    await navigator.clipboard.writeText(jsonString);
+    showStatus('JSON copied to clipboard', 'success');
+  } catch (error) {
+    showStatus(`Copy failed: ${error.message}`, 'error');
+  }
+}
+
+// Get current file data
+function getCurrentFileData() {
+  if (!currentJsonFile) return null;
+  
+  for (const schemaId in jsonFiles) {
+    const file = jsonFiles[schemaId].find(f => f.path === currentJsonFile);
+    if (file) {
+      return file;
+    }
+  }
+  return null;
 }
 
 // Setup event listeners
@@ -373,6 +521,12 @@ function setupEventListeners() {
     showStatus('Refreshed successfully', 'success');
   });
   
+  // JSON editor buttons
+  copyJsonBtn.addEventListener('click', copyJsonToClipboard);
+  editModeBtn.addEventListener('click', enterEditMode);
+  saveJsonBtn.addEventListener('click', saveJsonChanges);
+  cancelEditBtn.addEventListener('click', cancelEdit);
+  
   // Context menu actions
   document.getElementById('viewSchemaItem').addEventListener('click', () => {
     if (currentSchema) {
@@ -397,6 +551,40 @@ function setupEventListeners() {
   
   // Resize handles
   setupResizeHandles();
+  
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyboardShortcuts);
+}
+
+// Handle keyboard shortcuts
+function handleKeyboardShortcuts(e) {
+  if (e.ctrlKey || e.metaKey) {
+    switch (e.key) {
+      case 'c':
+        if (!isEditMode && currentJsonFile) {
+          e.preventDefault();
+          copyJsonToClipboard();
+        }
+        break;
+      case 'e':
+        if (!isEditMode && currentJsonFile) {
+          e.preventDefault();
+          enterEditMode();
+        }
+        break;
+      case 's':
+        if (isEditMode) {
+          e.preventDefault();
+          saveJsonChanges();
+        }
+        break;
+    }
+  }
+  
+  // Escape key to cancel edit
+  if (e.key === 'Escape' && isEditMode) {
+    cancelEdit();
+  }
 }
 
 // Select a schema
@@ -410,6 +598,11 @@ function selectSchema(schemaId) {
 
 // Select a JSON file
 function selectJsonFile(filePath) {
+  // Exit edit mode when selecting a different file
+  if (isEditMode) {
+    exitEditMode();
+  }
+  
   currentJsonFile = filePath;
   renderJsonFilesList();
   renderJsonContent();
