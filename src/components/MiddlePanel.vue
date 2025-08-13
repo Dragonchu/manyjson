@@ -6,7 +6,7 @@
         <button 
           v-if="appStore.currentSchema" 
           class="btn-add"
-          @click="openAddFilePopup"
+          @click="() => { console.log('Add button clicked in middle panel'); openAddFilePopup(); }"
           title="Add JSON file"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -77,16 +77,22 @@ function showContextMenu(event: MouseEvent, file: JsonFile) {
 }
 
 function openAddFilePopup() {
+  console.log('openAddFilePopup called', { hasSchema: !!appStore.currentSchema })
+  
   if (!appStore.currentSchema) {
     appStore.showStatus('Please select a schema first', 'error')
     return
   }
 
+  console.log('Dispatching show-add-file-popup event', { schema: appStore.currentSchema.name })
+  
   // Emit event to show the add file popup
   const event = new CustomEvent('show-add-file-popup', {
     detail: { schema: appStore.currentSchema }
   })
   document.dispatchEvent(event)
+  
+  console.log('Event dispatched')
 }
 </script>
 

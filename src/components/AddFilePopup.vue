@@ -107,11 +107,14 @@ const editErrors = ref<any[]>([])
 const fileName = ref('')
 
 function showPopup(schemaInfo: SchemaInfo) {
+  console.log('showPopup called with schema:', schemaInfo?.name)
   schema.value = schemaInfo
   isVisible.value = true
   fileName.value = ''
   editContent.value = '{}'
   editErrors.value = []
+  
+  console.log('Popup visibility set to:', isVisible.value)
   
   // Focus the file name input after animation
   setTimeout(() => {
@@ -218,7 +221,9 @@ function validateEditContent() {
 }
 
 function handleGlobalEvent(event: CustomEvent) {
+  console.log('AddFilePopup received event:', event.type, event.detail)
   if (event.type === 'show-add-file-popup') {
+    console.log('Showing popup with schema:', event.detail.schema?.name)
     showPopup(event.detail.schema)
   }
 }
