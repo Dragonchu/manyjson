@@ -27,7 +27,7 @@
               <button 
                 class="action-btn primary" 
                 @click="saveJsonFile"
-                :disabled="!fileName.value?.trim() || hasSyntaxError"
+                :disabled="!fileName.value?.trim()"
                 :title="getButtonTooltip()"
               >
                 <SaveIcon />
@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
 import SaveIcon from './icons/SaveIcon.vue'
 import CancelIcon from './icons/CancelIcon.vue'
@@ -106,17 +106,11 @@ const editContent = ref('{}')
 const editErrors = ref<any[]>([])
 const fileName = ref('')
 
-// Check if there are syntax errors (as opposed to schema validation errors)
-const hasSyntaxError = computed(() => {
-  return editErrors.value.some(error => error.message === 'Invalid JSON syntax')
-})
+
 
 function getButtonTooltip() {
   if (!fileName.value?.trim()) {
     return 'Please enter a file name'
-  }
-  if (hasSyntaxError.value) {
-    return 'Please fix JSON syntax errors'
   }
   return 'Save JSON file'
 }
@@ -131,14 +125,6 @@ function showPopup(schemaInfo: SchemaInfo) {
   // Trigger validation after setting up the popup
   setTimeout(() => {
     validateEditContent()
-    console.log('Popup state:', {
-      fileName: fileName.value,
-      hasFileName: !!fileName.value?.trim(),
-      editContent: editContent.value,
-      editErrors: editErrors.value,
-      hasSyntaxError: hasSyntaxError.value,
-      buttonDisabled: !fileName.value?.trim() || hasSyntaxError.value
-    })
   }, 100)
   
   // Focus the file name input after animation
@@ -164,10 +150,7 @@ async function saveJsonFile() {
     return
   }
 
-  if (hasSyntaxError.value) {
-    appStore.showStatus('Please fix JSON syntax errors before saving', 'error')
-    return
-  }
+
 
   try {
     // Parse JSON to validate
