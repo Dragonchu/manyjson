@@ -39,7 +39,9 @@ export const useAppStore = defineStore('app', () => {
   const jsonFiles = ref<JsonFile[]>([])
   const isEditMode = ref(false)
   const isViewingSchema = ref(false)
+  const isEditingSchema = ref(false)
   const originalJsonContent = ref<string | null>(null)
+  const originalSchemaContent = ref<string | null>(null)
   const statusMessage = ref('')
   const statusType = ref<'success' | 'error' | 'info'>('info')
 
@@ -61,17 +63,20 @@ export const useAppStore = defineStore('app', () => {
     currentJsonFile.value = null
     isEditMode.value = false
     isViewingSchema.value = false
+    isEditingSchema.value = false
   }
 
   function setCurrentJsonFile(file: JsonFile | null) {
     currentJsonFile.value = file
     isEditMode.value = false
     isViewingSchema.value = false
+    isEditingSchema.value = false
   }
 
   function setEditMode(enabled: boolean) {
     isEditMode.value = enabled
     isViewingSchema.value = false
+    isEditingSchema.value = false
     if (enabled && currentJsonFile.value) {
       originalJsonContent.value = JSON.stringify(currentJsonFile.value.content, null, 2)
     }
@@ -82,6 +87,19 @@ export const useAppStore = defineStore('app', () => {
     if (enabled) {
       currentJsonFile.value = null
       isEditMode.value = false
+      isEditingSchema.value = false
+    }
+  }
+
+  function setSchemaEditMode(enabled: boolean) {
+    isEditingSchema.value = enabled
+    if (enabled) {
+      currentJsonFile.value = null
+      isEditMode.value = false
+      isViewingSchema.value = false
+      if (currentSchema.value) {
+        originalSchemaContent.value = JSON.stringify(currentSchema.value.content, null, 2)
+      }
     }
   }
 
@@ -308,7 +326,7 @@ export const useAppStore = defineStore('app', () => {
             "age": 30
           },
           isValid: true,
-          errors: []
+          errors: [] as any[]
         },
         {
           name: 'user-data-invalid.json',
@@ -319,7 +337,7 @@ export const useAppStore = defineStore('app', () => {
             "email": "invalid-email"
           },
           isValid: false,
-          errors: []
+          errors: [] as any[]
         },
         {
           name: 'product-data-1.json',
@@ -331,7 +349,7 @@ export const useAppStore = defineStore('app', () => {
             "category": "Electronics"
           },
           isValid: true,
-          errors: []
+          errors: [] as any[]
         }
       ]
 
@@ -392,6 +410,44 @@ export const useAppStore = defineStore('app', () => {
     } catch (error) {
       logError('Unexpected error in saveJsonFile', error)
       showStatus('Failed to save file', 'error')
+      return false
+    }
+  }
+
+  async function saveSchema(schemaPath: string, content: string): Promise<boolean> {
+    logInfo('saveSchema called', { schemaPath, contentLength: content.length })
+    
+    try {
+      if (window.electronAPI) {
+        logInfo('Using Electron API to save schema file')
+        
+        try {
+          const result = await window.electronAPI.writeJsonFile(schemaPath, content)
+          logInfo('Electron API writeJsonFile result for schema', result)
+          
+          if (result.success) {
+            logInfo('Schema saved successfully via Electron API')
+            showStatus('Schema saved successfully', 'success')
+            return true
+          } else {
+            logError('Electron API returned failure for saveSchema', { error: result.error })
+            showStatus(`Failed to save schema: ${result.error}`, 'error')
+            return false
+          }
+        } catch (electronError) {
+          logError('Exception during Electron API writeJsonFile call for schema', electronError)
+          showStatus(`Error saving schema: ${electronError}`, 'error')
+          return false
+        }
+      } else {
+        // Fallback for web mode
+        logInfo('Electron API not available, using fallback for saveSchema')
+        showStatus('Schema saved (mock)', 'success')
+        return true
+      }
+    } catch (error) {
+      logError('Unexpected error in saveSchema', error)
+      showStatus('Failed to save schema', 'error')
       return false
     }
   }
@@ -522,7 +578,9 @@ export const useAppStore = defineStore('app', () => {
     jsonFiles,
     isEditMode,
     isViewingSchema,
+    isEditingSchema,
     originalJsonContent,
+    originalSchemaContent,
     statusMessage,
     statusType,
     
@@ -536,12 +594,14 @@ export const useAppStore = defineStore('app', () => {
     setCurrentJsonFile,
     setEditMode,
     setSchemaViewMode,
+    setSchemaEditMode,
     showStatus,
     validateJsonWithSchema,
     addSchema,
     loadSchemas,
     loadJsonFiles,
     saveJsonFile,
+    saveSchema,
     deleteSchema,
     deleteJsonFile
   }

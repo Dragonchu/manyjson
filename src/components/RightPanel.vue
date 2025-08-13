@@ -3,15 +3,21 @@
     <div class="right-panel-header">
       <div class="right-panel-title">
         {{ 
-          appStore.isViewingSchema && appStore.currentSchema 
-            ? `Schema: ${appStore.currentSchema.name}` 
-            : appStore.currentJsonFile 
-              ? appStore.currentJsonFile.name 
-              : 'JSON Content Viewer' 
+          appStore.isEditingSchema && appStore.currentSchema 
+            ? `Editing Schema: ${appStore.currentSchema.name}` 
+            : appStore.isViewingSchema && appStore.currentSchema 
+              ? `Schema: ${appStore.currentSchema.name}` 
+              : appStore.currentJsonFile 
+                ? appStore.currentJsonFile.name 
+                : 'JSON Content Viewer' 
         }}
       </div>
       <div class="right-panel-controls">
-        <div class="validation-status" v-if="appStore.isViewingSchema && appStore.currentSchema">
+        <div class="validation-status" v-if="appStore.isEditingSchema && appStore.currentSchema">
+          <div class="status-icon editing"></div>
+          <span class="status-editing">Editing Schema</span>
+        </div>
+        <div class="validation-status" v-else-if="appStore.isViewingSchema && appStore.currentSchema">
           <div class="status-icon schema"></div>
           <span class="status-schema">Schema Definition</span>
         </div>
@@ -24,7 +30,15 @@
             {{ appStore.currentJsonFile.isValid ? 'Valid JSON' : `${appStore.currentJsonFile.errors.length} validation errors` }}
           </span>
         </div>
-        <div class="panel-actions" v-if="appStore.isViewingSchema && appStore.currentSchema">
+        <div class="panel-actions" v-if="appStore.isEditingSchema && appStore.currentSchema">
+          <button class="action-btn primary" @click="saveSchemaChanges" title="Save Schema">
+            <SaveIcon />
+          </button>
+          <button class="action-btn" @click="cancelSchemaEdit" title="Cancel Edit">
+            <CancelIcon />
+          </button>
+        </div>
+        <div class="panel-actions" v-else-if="appStore.isViewingSchema && appStore.currentSchema">
           <button class="action-btn" @click="copySchemaToClipboard" title="Copy Schema">
             <CopyIcon />
           </button>
@@ -46,8 +60,18 @@
       </div>
     </div>
     <div class="json-content">
+      <!-- Schema Editor -->
+      <textarea 
+        v-if="appStore.isEditingSchema && appStore.currentSchema"
+        v-model="editSchemaContent"
+        class="json-editor schema-editor"
+        spellcheck="false"
+        @input="validateSchemaEditContent"
+        placeholder="Enter schema JSON..."
+      ></textarea>
+
       <!-- Schema Viewer -->
-      <div v-if="appStore.isViewingSchema && appStore.currentSchema" class="json-viewer">
+      <div v-else-if="appStore.isViewingSchema && appStore.currentSchema" class="json-viewer">
         <div class="schema-info-banner">
           <strong>Viewing Schema: {{ appStore.currentSchema.name }}</strong>
         </div>
@@ -103,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import JsonHighlight from './JsonHighlight.vue'
 import CopyIcon from './icons/CopyIcon.vue'
@@ -114,6 +138,8 @@ import CancelIcon from './icons/CancelIcon.vue'
 const appStore = useAppStore()
 const editContent = ref('')
 const editErrors = ref<any[]>([])
+const editSchemaContent = ref('')
+const editSchemaErrors = ref<any[]>([])
 
 // Watch for changes in current JSON file
 watch(() => appStore.currentJsonFile, (newFile) => {
@@ -121,6 +147,20 @@ watch(() => appStore.currentJsonFile, (newFile) => {
     editContent.value = JSON.stringify(newFile.content, null, 2)
   }
 }, { immediate: true })
+
+// Watch for changes in current schema when entering edit mode
+watch(() => appStore.currentSchema, (newSchema) => {
+  if (newSchema && appStore.isEditingSchema) {
+    editSchemaContent.value = JSON.stringify(newSchema.content, null, 2)
+  }
+}, { immediate: true })
+
+// Watch for schema edit mode changes
+watch(() => appStore.isEditingSchema, (isEditing) => {
+  if (isEditing && appStore.currentSchema) {
+    editSchemaContent.value = JSON.stringify(appStore.currentSchema.content, null, 2)
+  }
+})
 
 function toggleEditMode() {
   if (appStore.currentJsonFile) {
@@ -178,6 +218,47 @@ function validateEditContent() {
     }
   } catch (error) {
     editErrors.value = [{ message: 'Invalid JSON syntax' }]
+  }
+}
+
+function cancelSchemaEdit() {
+  appStore.setSchemaEditMode(false)
+  editSchemaContent.value = ''
+  editSchemaErrors.value = []
+}
+
+async function saveSchemaChanges() {
+  if (!appStore.currentSchema) return
+
+  try {
+    // Parse and validate JSON syntax
+    const parsedContent = JSON.parse(editSchemaContent.value)
+    
+    // TODO: Add schema validation here if needed
+    // For now, we'll just validate that it's valid JSON
+    
+    // Save the schema
+    const success = await appStore.saveSchema(appStore.currentSchema.path, editSchemaContent.value)
+    
+    if (success) {
+      // Update the current schema content
+      appStore.currentSchema.content = parsedContent
+      appStore.setSchemaEditMode(false)
+      
+      // Reload schemas to refresh the UI
+      await appStore.loadSchemas()
+    }
+  } catch (error) {
+    appStore.showStatus('Invalid JSON syntax', 'error')
+  }
+}
+
+function validateSchemaEditContent() {
+  try {
+    JSON.parse(editSchemaContent.value)
+    editSchemaErrors.value = []
+  } catch (error) {
+    editSchemaErrors.value = [{ message: 'Invalid JSON syntax' }]
   }
 }
 
@@ -392,6 +473,39 @@ async function copySchemaToClipboard() {
 .status-schema {
   color: var(--linear-accent);
   font-weight: 500;
+}
+
+/* Schema editing styles */
+.status-icon.editing {
+  width: 12px;
+  height: 12px;
+  background: var(--linear-warning);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-editing {
+  color: var(--linear-warning);
+  font-weight: 500;
+}
+
+.schema-editor {
+  border: 2px solid var(--linear-warning);
+  background: rgba(255, 193, 7, 0.05);
+}
+
+.schema-editor:focus {
+  border-color: var(--linear-warning);
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .schema-info-banner {
