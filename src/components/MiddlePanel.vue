@@ -5,15 +5,15 @@
         <div class="middle-panel-title">Associated JSON Files</div>
         <button 
           v-if="appStore.currentSchema" 
-          class="btn-add-file"
-          @click="addJsonFile"
+          class="btn-add"
+          @click="openAddFilePopup"
           title="Add JSON file"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          Add File
+          Add
         </button>
       </div>
       <div class="schema-info">
@@ -76,18 +76,17 @@ function showContextMenu(event: MouseEvent, file: JsonFile) {
   document.dispatchEvent(contextMenuEvent)
 }
 
-async function addJsonFile() {
+function openAddFilePopup() {
   if (!appStore.currentSchema) {
     appStore.showStatus('Please select a schema first', 'error')
     return
   }
 
-  try {
-    await appStore.addJsonFile(appStore.currentSchema)
-  } catch (error) {
-    console.error('Failed to add JSON file:', error)
-    appStore.showStatus('Failed to add JSON file', 'error')
-  }
+  // Emit event to show the add file popup
+  const event = new CustomEvent('show-add-file-popup', {
+    detail: { schema: appStore.currentSchema }
+  })
+  document.dispatchEvent(event)
 }
 </script>
 
@@ -121,7 +120,7 @@ async function addJsonFile() {
   color: var(--linear-text-primary);
 }
 
-.btn-add-file {
+.btn-add {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -136,12 +135,12 @@ async function addJsonFile() {
   transition: var(--linear-transition-fast);
 }
 
-.btn-add-file:hover {
+.btn-add:hover {
   background: var(--linear-accent-hover, #0066cc);
   transform: translateY(-1px);
 }
 
-.btn-add-file svg {
+.btn-add svg {
   width: 14px;
   height: 14px;
 }
