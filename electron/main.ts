@@ -42,6 +42,24 @@ function createMainWindow(): BrowserWindow {
   return mainWindow
 }
 
+// 获取应用配置目录
+function getConfigDirectory(): string {
+  const userDataPath = app.getPath('userData')
+  return join(userDataPath, 'schemas')
+}
+
+// 确保配置目录存在
+async function ensureConfigDirectory(): Promise<string> {
+  const configDir = getConfigDirectory()
+  try {
+    await fs.mkdir(configDir, { recursive: true })
+    return configDir
+  } catch (error) {
+    console.error('Failed to create config directory:', error)
+    throw error
+  }
+}
+
 // IPC 处理程序
 ipcMain.handle('write-json-file', async (event, filePath: string, content: string) => {
   try {
@@ -49,6 +67,56 @@ ipcMain.handle('write-json-file', async (event, filePath: string, content: strin
     return { success: true }
   } catch (error) {
     console.error('Failed to write file:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// 获取配置目录路径
+ipcMain.handle('get-config-directory', async () => {
+  try {
+    const configDir = await ensureConfigDirectory()
+    return { success: true, path: configDir }
+  } catch (error) {
+    console.error('Failed to get config directory:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// 写入配置文件（使用配置目录）
+ipcMain.handle('write-config-file', async (event, fileName: string, content: string) => {
+  try {
+    const configDir = await ensureConfigDirectory()
+    const filePath = join(configDir, fileName)
+    await fs.writeFile(filePath, content, 'utf8')
+    return { success: true, filePath }
+  } catch (error) {
+    console.error('Failed to write config file:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// 读取配置目录中的所有文件
+ipcMain.handle('list-config-files', async () => {
+  try {
+    const configDir = await ensureConfigDirectory()
+    const files = await fs.readdir(configDir)
+    const jsonFiles = files.filter(file => file.endsWith('.json'))
+    
+    const fileInfos = await Promise.all(
+      jsonFiles.map(async (fileName) => {
+        const filePath = join(configDir, fileName)
+        const content = await fs.readFile(filePath, 'utf8')
+        return {
+          name: fileName,
+          path: filePath,
+          content: JSON.parse(content)
+        }
+      })
+    )
+    
+    return { success: true, files: fileInfos }
+  } catch (error) {
+    console.error('Failed to list config files:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })

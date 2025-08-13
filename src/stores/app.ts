@@ -86,9 +86,92 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function addSchema(name: string, content: any): Promise<boolean> {
+    try {
+      // Validate schema name
+      if (!name.trim()) {
+        showStatus('Schema name cannot be empty', 'error')
+        return false
+      }
+
+      // Ensure .json extension
+      const schemaName = name.endsWith('.json') ? name : `${name}.json`
+      
+      // Check for duplicate names
+      if (schemas.value.some(schema => schema.name === schemaName)) {
+        showStatus('A schema with this name already exists', 'error')
+        return false
+      }
+
+      // Validate schema content
+      try {
+        ajv.compile(content)
+      } catch (error) {
+        showStatus(`Invalid schema: ${error}`, 'error')
+        return false
+      }
+
+      if (window.electronAPI) {
+        // Use Electron config directory
+        const result = await window.electronAPI.writeConfigFile(schemaName, JSON.stringify(content, null, 2))
+        if (result.success && result.filePath) {
+          const newSchema: SchemaInfo = {
+            name: schemaName,
+            path: result.filePath,
+            content,
+            associatedFiles: []
+          }
+          
+          schemas.value.push(newSchema)
+          showStatus(`Schema "${schemaName}" created successfully`, 'success')
+          return true
+        } else {
+          showStatus(`Failed to write file: ${result.error}`, 'error')
+          return false
+        }
+      } else {
+        // Fallback for web mode - add to memory only
+        const newSchema: SchemaInfo = {
+          name: schemaName,
+          path: `mock:///${schemaName}`,
+          content,
+          associatedFiles: []
+        }
+        
+        schemas.value.push(newSchema)
+        showStatus(`Schema "${schemaName}" created (mock mode)`, 'success')
+        return true
+      }
+    } catch (error) {
+      console.error('Failed to add schema:', error)
+      showStatus('Failed to add schema', 'error')
+      return false
+    }
+  }
+
   async function loadSchemas() {
     try {
-      // Mock data for now - in real app, this would load from file system
+      if (window.electronAPI) {
+        // Load schemas from config directory
+        const result = await window.electronAPI.listConfigFiles()
+        if (result.success && result.files) {
+          const loadedSchemas: SchemaInfo[] = result.files.map(file => ({
+            name: file.name,
+            path: file.path,
+            content: file.content,
+            associatedFiles: []
+          }))
+          
+          schemas.value = loadedSchemas
+          await loadJsonFiles()
+          showStatus(`Loaded ${loadedSchemas.length} schemas from config directory`, 'success')
+          return
+        } else {
+          console.warn('Failed to load from config directory:', result.error)
+        }
+      }
+      
+      // Fallback: Mock data for development/web mode
       const mockSchemas: SchemaInfo[] = [
         {
           name: 'user-schema.json',
@@ -126,7 +209,7 @@ export const useAppStore = defineStore('app', () => {
       
       schemas.value = mockSchemas
       await loadJsonFiles()
-      showStatus('Schemas loaded successfully', 'success')
+      showStatus('Schemas loaded successfully (mock data)', 'success')
     } catch (error) {
       console.error('Failed to load schemas:', error)
       showStatus('Failed to load schemas', 'error')
@@ -350,6 +433,7 @@ export const useAppStore = defineStore('app', () => {
     setEditMode,
     showStatus,
     validateJsonWithSchema,
+    addSchema,
     loadSchemas,
     loadJsonFiles,
     saveJsonFile,

@@ -20,4 +20,11 @@ contextBridge.exposeInMainWorld('jsonAPI', {
 // 暴露文件系统 API for schema manager
 contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (filename) => ipcRenderer.invoke('read-file-sync', filename),
+  writeJsonFile: (filePath, content) => ipcRenderer.invoke('write-json-file', filePath, content),
+  deleteFile: (filePath) => ipcRenderer.invoke('delete-file', filePath),
+  getConfigDirectory: () => ipcRenderer.invoke('get-config-directory'),
+  writeConfigFile: (fileName, content) => ipcRenderer.invoke('write-config-file', fileName, content),
+  listConfigFiles: () => ipcRenderer.invoke('list-config-files'),
+  showOpenDialog: (options) => ipcRenderer.invoke('show-open-dialog', options),
+  showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
 });
