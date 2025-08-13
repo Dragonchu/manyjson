@@ -28,7 +28,7 @@
                 class="action-btn primary" 
                 @click="saveJsonFile"
                 :disabled="false"
-                :title="`Debug: fileName='${fileName.value}', trim='${fileName.value?.trim()}', disabled=${!fileName.value?.trim()}`"
+                :title="getButtonTooltip()"
               >
                 <SaveIcon />
               </button>
@@ -159,9 +159,6 @@ async function saveJsonFile() {
     // Ensure .json extension
     const fullFileName = fileName.value.endsWith('.json') ? fileName.value : `${fileName.value}.json`
     
-    // Create mock path for the new file
-    const mockPath = `new://${fullFileName}`
-    
     // Check if file name already exists in this schema
     if (schema.value.associatedFiles.some(f => f.name === fullFileName)) {
       appStore.showStatus('A file with this name already exists', 'error')
@@ -171,10 +168,46 @@ async function saveJsonFile() {
     // Validate against schema
     const validation = appStore.validateJsonWithSchema(parsedContent, schema.value.content)
     
-    // Create new JsonFile object
+    // Save the JSON file to disk first
+    let actualFilePath: string
+    try {
+      if (window.electronAPI) {
+        // Prompt user for save location
+        const dialogResult = await window.electronAPI.showSaveDialog({
+          title: 'Save JSON File',
+          defaultPath: fullFileName,
+          filters: [
+            { name: 'JSON Files', extensions: ['json'] },
+            { name: 'All Files', extensions: ['*'] }
+          ]
+        })
+        
+        if (dialogResult.canceled || !dialogResult.filePath) {
+          appStore.showStatus('Save operation was cancelled', 'info')
+          return
+        }
+        
+        // Save the file to the selected path
+        const saveResult = await window.electronAPI.writeJsonFile(dialogResult.filePath, editContent.value)
+        if (!saveResult.success) {
+          appStore.showStatus(`Failed to save file: ${saveResult.error}`, 'error')
+          return
+        }
+        actualFilePath = dialogResult.filePath
+      } else {
+        // Fallback for web mode - use mock path
+        actualFilePath = `new://${fullFileName}`
+        appStore.showStatus('File saved (mock - web mode)', 'success')
+      }
+    } catch (error) {
+      appStore.showStatus(`Failed to save file: ${error}`, 'error')
+      return
+    }
+    
+    // Create new JsonFile object with actual file path
     const newJsonFile = {
       name: fullFileName,
-      path: mockPath,
+      path: actualFilePath,
       content: parsedContent,
       isValid: validation.isValid,
       errors: validation.errors
@@ -184,7 +217,7 @@ async function saveJsonFile() {
     schema.value.associatedFiles.push(newJsonFile)
     
     // Add to global jsonFiles array
-    const existingFileIndex = appStore.jsonFiles.findIndex(f => f.path === mockPath)
+    const existingFileIndex = appStore.jsonFiles.findIndex(f => f.path === actualFilePath)
     if (existingFileIndex === -1) {
       appStore.jsonFiles.push(newJsonFile)
     } else {

@@ -1064,9 +1064,24 @@ async function saveJsonChanges() {
         }
       }
       
-      // Here you would typically save to file system
-      // For now, we'll just update the in-memory data
-      showStatus('JSON saved successfully', 'success');
+      // Save to file system
+      try {
+        if (window.electronAPI) {
+          const result = await window.electronAPI.writeJsonFile(currentJsonFile, jsonText);
+          if (result.success) {
+            showStatus('JSON saved successfully', 'success');
+          } else {
+            showStatus(`Failed to save file: ${result.error}`, 'error');
+            return;
+          }
+        } else {
+          // Fallback for web mode
+          showStatus('JSON saved (mock - web mode)', 'success');
+        }
+      } catch (error) {
+        showStatus(`Failed to save file: ${error.message}`, 'error');
+        return;
+      }
       
       exitEditMode();
       renderJsonFilesList(); // Update validation status in file list
