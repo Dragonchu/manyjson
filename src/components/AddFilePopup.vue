@@ -27,8 +27,8 @@
               <button 
                 class="action-btn primary" 
                 @click="saveJsonFile"
-                :disabled="!fileName.value?.trim()"
-                :title="getButtonTooltip()"
+                :disabled="false"
+                :title="`Debug: fileName='${fileName.value}', trim='${fileName.value?.trim()}', disabled=${!fileName.value?.trim()}`"
               >
                 <SaveIcon />
               </button>
