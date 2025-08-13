@@ -1,7 +1,21 @@
 <template>
   <div class="middle-panel">
     <div class="middle-panel-header">
-      <div class="middle-panel-title">Associated JSON Files</div>
+      <div class="header-top">
+        <div class="middle-panel-title">Associated JSON Files</div>
+        <button 
+          v-if="appStore.currentSchema" 
+          class="btn-add-file"
+          @click="addJsonFile"
+          title="Add JSON file"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Add File
+        </button>
+      </div>
       <div class="schema-info">
         {{ appStore.currentSchema ? `Schema: ${appStore.currentSchema.name}` : 'Select a schema to view associated files' }}
       </div>
@@ -61,6 +75,20 @@ function showContextMenu(event: MouseEvent, file: JsonFile) {
   })
   document.dispatchEvent(contextMenuEvent)
 }
+
+async function addJsonFile() {
+  if (!appStore.currentSchema) {
+    appStore.showStatus('Please select a schema first', 'error')
+    return
+  }
+
+  try {
+    await appStore.addJsonFile(appStore.currentSchema)
+  } catch (error) {
+    console.error('Failed to add JSON file:', error)
+    appStore.showStatus('Failed to add JSON file', 'error')
+  }
+}
 </script>
 
 <style scoped>
@@ -80,11 +108,42 @@ function showContextMenu(event: MouseEvent, file: JsonFile) {
   background: var(--linear-surface);
 }
 
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .middle-panel-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--linear-text-primary);
-  margin-bottom: 8px;
+}
+
+.btn-add-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--linear-accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--linear-transition-fast);
+}
+
+.btn-add-file:hover {
+  background: var(--linear-accent-hover, #0066cc);
+  transform: translateY(-1px);
+}
+
+.btn-add-file svg {
+  width: 14px;
+  height: 14px;
 }
 
 .schema-info {
