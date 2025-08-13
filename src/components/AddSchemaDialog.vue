@@ -269,7 +269,8 @@ async function handleSubmit() {
   logInfo('Form submission started', {
     schemaName: schemaName.value,
     contentLength: schemaContentText.value.length,
-    hasValidContent: !!parsedContent.value
+    hasValidContent: !!parsedContent.value,
+    hasElectronAPI: !!window.electronAPI
   })
   
   if (!validateForm()) {
@@ -281,6 +282,13 @@ async function handleSubmit() {
   
   try {
     logInfo('Calling appStore.addSchema')
+    
+    // Check if electronAPI is available
+    if (!window.electronAPI) {
+      logError('electronAPI is not available - running in web mode')
+      appStore.showStatus('Running in web mode - schemas will not be saved permanently', 'warning')
+    }
+    
     const success = await appStore.addSchema(schemaName.value, parsedContent.value)
     logInfo('appStore.addSchema completed', { success })
     
@@ -288,12 +296,25 @@ async function handleSubmit() {
       logInfo('Schema creation successful, closing dialog')
       closeDialog()
     } else {
-      logError('Schema creation failed')
+      logError('Schema creation failed - check app store logs for details')
       // The error message is already shown by the store
     }
   } catch (error) {
     logError('Exception during schema creation', error)
-    appStore.showStatus('Failed to create schema', 'error')
+    
+    // Show more detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+    const errorDetails = error instanceof Error ? error.stack : 'No stack trace available'
+    
+    logError('Detailed error info', {
+      message: errorMessage,
+      stack: errorDetails,
+      hasElectronAPI: !!window.electronAPI,
+      schemaName: schemaName.value,
+      contentLength: schemaContentText.value.length
+    })
+    
+    appStore.showStatus(`Failed to create schema: ${errorMessage}`, 'error')
   } finally {
     isSubmitting.value = false
     logInfo('Form submission completed')
@@ -326,13 +347,17 @@ defineExpose({
 }
 
 .dialog {
-  background: var(--linear-surface);
+  background: var(--linear-bg-secondary, #111111);
+  border: 1px solid var(--linear-border, rgba(255, 255, 255, 0.1));
   border-radius: 8px;
   width: 600px;
   max-width: 90vw;
   max-height: 90vh;
   overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  /* Ensure dialog is always visible */
+  opacity: 1;
+  transform: none;
 }
 
 .dialog-header {
@@ -398,14 +423,15 @@ defineExpose({
 .form-textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--linear-border);
+  border: 1px solid var(--linear-border, rgba(255, 255, 255, 0.2));
   border-radius: 6px;
-  background: var(--linear-bg-primary);
-  color: var(--linear-text-primary);
+  background: var(--linear-bg-primary, #0a0a0a);
+  color: var(--linear-text-primary, rgba(255, 255, 255, 0.95));
   font-size: 14px;
   font-family: inherit;
-  transition: var(--linear-transition-fast);
+  transition: var(--linear-transition-fast, all 0.15s ease);
   box-sizing: border-box;
+  min-height: 40px;
 }
 
 .form-input:focus,
@@ -473,7 +499,8 @@ defineExpose({
   gap: 12px;
   padding: 20px;
   border-top: 1px solid var(--linear-border);
-  background: var(--linear-bg-secondary);
+  background: var(--linear-bg-tertiary);
+  backdrop-filter: blur(10px);
 }
 
 .btn {

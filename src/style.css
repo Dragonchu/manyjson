@@ -13,6 +13,8 @@
   --linear-text-secondary: rgba(255, 255, 255, 0.65);
   --linear-text-tertiary: rgba(255, 255, 255, 0.45);
   --linear-accent: #6366f1;
+  --linear-accent-hover: #5855eb;
+  --linear-accent-rgb: 99, 102, 241;
   --linear-accent-bright: #8b5cf6;
   --linear-success: #10b981;
   --linear-warning: #f59e0b;

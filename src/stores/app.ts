@@ -103,7 +103,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function addSchema(name: string, content: any): Promise<boolean> {
-    logInfo('addSchema called', { name, hasContent: !!content })
+    logInfo('addSchema called', { name, hasContent: !!content, hasElectronAPI: !!window.electronAPI })
     
     try {
       // Validate schema name
@@ -134,7 +134,8 @@ export const useAppStore = defineStore('app', () => {
         return false
       }
 
-      if (window.electronAPI) {
+      // Check if electronAPI is available and properly initialized
+      if (window.electronAPI && typeof window.electronAPI.writeConfigFile === 'function') {
         logInfo('Using Electron API to write config file')
         
         try {
@@ -155,7 +156,7 @@ export const useAppStore = defineStore('app', () => {
             return true
           } else {
             logError('Electron API returned failure', { result })
-            showStatus(`Failed to write file: ${result.error}`, 'error')
+            showStatus(`Failed to write file: ${result.error || 'Unknown error'}`, 'error')
             return false
           }
         } catch (electronError) {
@@ -164,7 +165,7 @@ export const useAppStore = defineStore('app', () => {
           return false
         }
       } else {
-        logInfo('Electron API not available, using fallback mode')
+        logInfo('Electron API not available or not properly initialized, using fallback mode')
         
         // Fallback for web mode - add to memory only
         const newSchema: SchemaInfo = {
@@ -176,12 +177,12 @@ export const useAppStore = defineStore('app', () => {
         
         schemas.value.push(newSchema)
         logInfo('Schema added in fallback mode', { schemaName })
-        showStatus(`Schema "${schemaName}" created (mock mode)`, 'success')
+        showStatus(`Schema "${schemaName}" created (web mode - not saved to disk)`, 'success')
         return true
       }
     } catch (error) {
       logError('Unexpected error in addSchema', error)
-      showStatus('Failed to add schema', 'error')
+      showStatus(`Failed to add schema: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
       return false
     }
   }

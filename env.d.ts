@@ -7,7 +7,7 @@ declare module '*.vue' {
 }
 
 interface Window {
-  electronAPI: {
+  electronAPI?: {
     readFile: (filename: string) => Promise<any>
     writeJsonFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>
     deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
