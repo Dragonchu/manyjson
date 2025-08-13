@@ -26,8 +26,8 @@
             <div class="popup-actions">
               <button 
                 class="action-btn primary" 
-                @click="saveJsonFile"
-                :disabled="!fileName.trim() || editErrors.length > 0"
+                @click="() => { console.log('Save button clicked'); saveJsonFile(); }"
+                :disabled="!fileName.value.trim() || editErrors.length > 0"
                 title="Save JSON file"
               >
                 <SaveIcon />
@@ -102,7 +102,7 @@ import CancelIcon from './icons/CancelIcon.vue'
 const appStore = useAppStore()
 const isVisible = ref(false)
 const schema = ref<SchemaInfo | null>(null)
-const editContent = ref('{\n  \n}')
+const editContent = ref('{}')
 const editErrors = ref<any[]>([])
 const fileName = ref('')
 
@@ -110,7 +110,7 @@ function showPopup(schemaInfo: SchemaInfo) {
   schema.value = schemaInfo
   isVisible.value = true
   fileName.value = ''
-  editContent.value = '{\n  \n}'
+  editContent.value = '{}'
   editErrors.value = []
   
   // Focus the file name input after animation
@@ -125,13 +125,20 @@ function closePopup() {
   setTimeout(() => {
     schema.value = null
     fileName.value = ''
-    editContent.value = '{\n  \n}'
+    editContent.value = '{}'
     editErrors.value = []
   }, 300)
 }
 
 async function saveJsonFile() {
-  if (!schema.value || !fileName.trim()) {
+  console.log('saveJsonFile called', { 
+    hasSchema: !!schema.value, 
+    fileName: fileName.value,
+    editErrors: editErrors.value.length,
+    content: editContent.value 
+  })
+  
+  if (!schema.value || !fileName.value.trim()) {
     appStore.showStatus('Please enter a file name', 'error')
     return
   }
@@ -183,10 +190,12 @@ async function saveJsonFile() {
     // Save the updated schema associations to persistence
     await appStore.saveSchemaAssociations()
     
+    console.log('File created successfully', { fullFileName, isValid: validation.isValid })
     appStore.showStatus(`File "${fullFileName}" created successfully${validation.isValid ? '' : ' (with validation errors)'}`, 'success')
     
     closePopup()
   } catch (error) {
+    console.error('Error saving JSON file:', error)
     appStore.showStatus('Invalid JSON syntax', 'error')
   }
 }
@@ -198,11 +207,13 @@ function validateEditContent() {
     if (schema.value) {
       const validation = appStore.validateJsonWithSchema(parsedContent, schema.value.content)
       editErrors.value = validation.errors
+      console.log('Validation result:', { isValid: validation.isValid, errorCount: validation.errors.length })
     } else {
       editErrors.value = []
     }
   } catch (error) {
     editErrors.value = [{ message: 'Invalid JSON syntax' }]
+    console.log('JSON syntax error:', error)
   }
 }
 
