@@ -27,7 +27,7 @@
               <button 
                 class="action-btn primary" 
                 @click="saveJsonFile"
-                :disabled="!fileName.value?.trim() || editErrors.length > 0"
+                :disabled="!fileName.value?.trim() || hasSyntaxError"
                 title="Save JSON file"
               >
                 <SaveIcon />
@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
 import SaveIcon from './icons/SaveIcon.vue'
 import CancelIcon from './icons/CancelIcon.vue'
@@ -105,6 +105,11 @@ const schema = ref<SchemaInfo | null>(null)
 const editContent = ref('{}')
 const editErrors = ref<any[]>([])
 const fileName = ref('')
+
+// Check if there are syntax errors (as opposed to schema validation errors)
+const hasSyntaxError = computed(() => {
+  return editErrors.value.some(error => error.message === 'Invalid JSON syntax')
+})
 
 function showPopup(schemaInfo: SchemaInfo) {
   schema.value = schemaInfo
@@ -136,8 +141,8 @@ async function saveJsonFile() {
     return
   }
 
-  if (editErrors.value.length > 0) {
-    appStore.showStatus('Please fix validation errors before saving', 'error')
+  if (hasSyntaxError.value) {
+    appStore.showStatus('Please fix JSON syntax errors before saving', 'error')
     return
   }
 
