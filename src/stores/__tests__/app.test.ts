@@ -81,6 +81,88 @@ describe('App Store', () => {
     expect(store.isViewingSchema).toBe(false)
   })
 
+  it('should manage schema edit mode state', () => {
+    const store = useAppStore()
+    
+    const mockJsonFile = {
+      name: 'test.json',
+      path: '/test.json',
+      content: { name: 'test' },
+      isValid: true,
+      errors: []
+    }
+
+    const mockSchema = {
+      name: 'test-schema',
+      path: '/test-schema.json',
+      content: { type: 'object' },
+      associatedFiles: []
+    }
+
+    // Set up some initial state
+    store.setCurrentJsonFile(mockJsonFile)
+    store.setEditMode(true)
+    store.setCurrentSchema(mockSchema)
+
+    // Enable schema edit mode
+    store.setSchemaEditMode(true)
+    
+    expect(store.isEditingSchema).toBe(true)
+    expect(store.currentJsonFile).toBeNull()
+    expect(store.isEditMode).toBe(false)
+    expect(store.isViewingSchema).toBe(false)
+    expect(store.originalSchemaContent).toBe(JSON.stringify(mockSchema.content, null, 2))
+
+    // Disable schema edit mode
+    store.setSchemaEditMode(false)
+    
+    expect(store.isEditingSchema).toBe(false)
+  })
+
+  it('should clear schema edit mode when setting other modes', () => {
+    const store = useAppStore()
+    
+    const mockSchema = {
+      name: 'test-schema',
+      path: '/test-schema.json',
+      content: { type: 'object' },
+      associatedFiles: []
+    }
+
+    // Enable schema edit mode first
+    store.setCurrentSchema(mockSchema)
+    store.setSchemaEditMode(true)
+    expect(store.isEditingSchema).toBe(true)
+
+    // Setting current schema should clear edit mode
+    store.setCurrentSchema(mockSchema)
+    expect(store.isEditingSchema).toBe(false)
+
+    // Enable schema edit mode again
+    store.setSchemaEditMode(true)
+    expect(store.isEditingSchema).toBe(true)
+
+    // Setting JSON edit mode should clear schema edit mode
+    const mockJsonFile = {
+      name: 'test.json',
+      path: '/test.json',
+      content: { name: 'test' },
+      isValid: true,
+      errors: []
+    }
+    store.setCurrentJsonFile(mockJsonFile)
+    store.setEditMode(true)
+    expect(store.isEditingSchema).toBe(false)
+
+    // Enable schema edit mode again
+    store.setSchemaEditMode(true)
+    expect(store.isEditingSchema).toBe(true)
+
+    // Setting schema view mode should clear edit mode
+    store.setSchemaViewMode(true)
+    expect(store.isEditingSchema).toBe(false)
+  })
+
   it('should validate JSON with schema', () => {
     const store = useAppStore()
     const schema = {
@@ -236,6 +318,66 @@ describe('App Store', () => {
       expect(result).toBe(true)
       expect(store.schemas).toHaveLength(1)
       expect(store.schemas[0].path).toBe('mock:///test-schema.json')
+
+      // Restore electronAPI
+      Object.defineProperty(window, 'electronAPI', {
+        value: originalElectronAPI,
+        writable: true,
+        configurable: true,
+      })
+    })
+  })
+
+  describe('saveSchema', () => {
+    it('should save schema successfully with Electron API', async () => {
+      const store = useAppStore()
+      const schemaPath = '/test/schema.json'
+      const schemaContent = JSON.stringify({ type: 'object' }, null, 2)
+
+      mockElectronAPI.writeJsonFile.mockResolvedValue({
+        success: true
+      })
+
+      const result = await store.saveSchema(schemaPath, schemaContent)
+
+      expect(result).toBe(true)
+      expect(mockElectronAPI.writeJsonFile).toHaveBeenCalledWith(schemaPath, schemaContent)
+      expect(store.statusMessage).toBe('Schema saved successfully')
+      expect(store.statusType).toBe('success')
+    })
+
+    it('should handle Electron API save errors', async () => {
+      const store = useAppStore()
+      const schemaPath = '/test/schema.json'
+      const schemaContent = JSON.stringify({ type: 'object' }, null, 2)
+
+      mockElectronAPI.writeJsonFile.mockResolvedValue({
+        success: false,
+        error: 'Permission denied'
+      })
+
+      const result = await store.saveSchema(schemaPath, schemaContent)
+
+      expect(result).toBe(false)
+      expect(store.statusMessage).toBe('Failed to save schema: Permission denied')
+      expect(store.statusType).toBe('error')
+    })
+
+    it('should work in fallback mode without Electron API', async () => {
+      // Temporarily remove electronAPI
+      const originalElectronAPI = window.electronAPI
+      Object.defineProperty(window, 'electronAPI', {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      })
+
+      const store = useAppStore()
+      const result = await store.saveSchema('/test/schema.json', '{"type": "object"}')
+
+      expect(result).toBe(true)
+      expect(store.statusMessage).toBe('Schema saved (mock)')
+      expect(store.statusType).toBe('success')
 
       // Restore electronAPI
       Object.defineProperty(window, 'electronAPI', {

@@ -69,8 +69,9 @@ function handleViewSchema() {
 
 function handleEditSchema() {
   if (currentSchema.value) {
-    appStore.showStatus(`Edit schema functionality coming soon`, 'info')
-    // TODO: Implement schema editing
+    appStore.setCurrentSchema(currentSchema.value)
+    appStore.setSchemaEditMode(true)
+    appStore.showStatus(`Editing schema: ${currentSchema.value.name}`, 'info')
   }
   hideContextMenu()
 }

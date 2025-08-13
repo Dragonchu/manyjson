@@ -286,7 +286,7 @@ async function handleSubmit() {
     // Check if electronAPI is available
     if (!window.electronAPI) {
       logError('electronAPI is not available - running in web mode')
-      appStore.showStatus('Running in web mode - schemas will not be saved permanently', 'warning')
+      appStore.showStatus('Running in web mode - schemas will not be saved permanently', 'info')
     }
     
     const success = await appStore.addSchema(schemaName.value, parsedContent.value)
