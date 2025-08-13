@@ -8,9 +8,29 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 // 定义暴露给渲染进程的 API
 const electronAPI = {
+  // 文件读取
+  readFile: (filename: string): Promise<any> =>
+    ipcRenderer.invoke('read-file-sync', filename),
+
   // 文件写入
   writeJsonFile: (filePath: string, content: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('write-json-file', filePath, content),
+
+  // 删除文件
+  deleteFile: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('delete-file', filePath),
+
+  // 获取配置目录
+  getConfigDirectory: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('get-config-directory'),
+
+  // 写入配置文件
+  writeConfigFile: (fileName: string, content: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke('write-config-file', fileName, content),
+
+  // 列出配置文件
+  listConfigFiles: (): Promise<{ success: boolean; files?: Array<{ name: string; path: string; content: any }>; error?: string }> =>
+    ipcRenderer.invoke('list-config-files'),
 
   // 打开文件对话框
   showOpenDialog: (options: any): Promise<{ canceled: boolean; filePaths: string[] }> =>
@@ -19,10 +39,6 @@ const electronAPI = {
   // 保存文件对话框
   showSaveDialog: (options: any): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('show-save-dialog', options),
-
-  // 删除文件
-  deleteFile: (filePath: string): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('delete-file', filePath),
 }
 
 // 通过 contextBridge 安全地暴露 API

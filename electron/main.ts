@@ -149,7 +149,21 @@ async function ensureConfigDirectory(): Promise<string> {
   return ensureConfigDirectoryWithRetry()
 }
 
-// IPC 处理程序
+// IPC 处理器：文件操作
+ipcMain.handle('read-file-sync', async (event, filename: string) => {
+  logInfo('IPC: read-file-sync called', { filename })
+  
+  try {
+    const content = await fs.readFile(filename, 'utf-8')
+    const parsedContent = JSON.parse(content)
+    logInfo('File read successfully', { filename, contentLength: content.length })
+    return parsedContent
+  } catch (error) {
+    logError('Failed to read file', { filename, error })
+    throw error
+  }
+})
+
 ipcMain.handle('write-json-file', async (event, filePath: string, content: string) => {
   logInfo('write-json-file requested', { filePath, contentLength: content.length })
   

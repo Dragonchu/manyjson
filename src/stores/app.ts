@@ -103,7 +103,15 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function addSchema(name: string, content: any): Promise<boolean> {
-    logInfo('addSchema called', { name, hasContent: !!content, hasElectronAPI: !!window.electronAPI })
+    logInfo('addSchema called', { 
+      name, 
+      hasContent: !!content, 
+      hasElectronAPI: !!window.electronAPI,
+      electronAPIType: typeof window.electronAPI,
+      hasWriteConfigFile: !!(window.electronAPI?.writeConfigFile),
+      writeConfigFileType: typeof window.electronAPI?.writeConfigFile,
+      isElectronContext: typeof window !== 'undefined' && window.electronAPI !== undefined
+    })
     
     try {
       // Validate schema name
@@ -136,7 +144,7 @@ export const useAppStore = defineStore('app', () => {
 
       // Check if electronAPI is available and properly initialized
       if (window.electronAPI && typeof window.electronAPI.writeConfigFile === 'function') {
-        logInfo('Using Electron API to write config file')
+        logInfo('Using Electron API to write config file - attempting writeConfigFile call')
         
         try {
           const result = await window.electronAPI.writeConfigFile(schemaName, JSON.stringify(content, null, 2))
@@ -151,8 +159,8 @@ export const useAppStore = defineStore('app', () => {
             }
             
             schemas.value.push(newSchema)
-            logInfo('Schema added successfully', { schemaName, filePath: result.filePath })
-            showStatus(`Schema "${schemaName}" created successfully`, 'success')
+            logInfo('Schema added successfully via Electron API', { schemaName, filePath: result.filePath })
+            showStatus(`Schema "${schemaName}" created successfully at ${result.filePath}`, 'success')
             return true
           } else {
             logError('Electron API returned failure', { result })
@@ -165,7 +173,11 @@ export const useAppStore = defineStore('app', () => {
           return false
         }
       } else {
-        logInfo('Electron API not available or not properly initialized, using fallback mode')
+        logInfo('Electron API not available or not properly initialized, using fallback mode', {
+          hasElectronAPI: !!window.electronAPI,
+          hasWriteConfigFile: !!(window.electronAPI?.writeConfigFile),
+          writeConfigFileType: typeof window.electronAPI?.writeConfigFile
+        })
         
         // Fallback for web mode - add to memory only
         const newSchema: SchemaInfo = {
