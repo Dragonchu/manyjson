@@ -250,6 +250,7 @@ export const useAppStore = defineStore('app', () => {
             
             schemas.value = loadedSchemas
             await loadJsonFiles()
+            await loadSchemaAssociations()
             logInfo('Schemas loaded from config directory', { count: loadedSchemas.length })
             showStatus(`Loaded ${loadedSchemas.length} schemas from config directory`, 'success')
             return
@@ -302,6 +303,7 @@ export const useAppStore = defineStore('app', () => {
       
       schemas.value = mockSchemas
       await loadJsonFiles()
+      await loadSchemaAssociations()
       logInfo('Mock schemas loaded', { count: mockSchemas.length })
       showStatus('Schemas loaded successfully (mock data)', 'success')
     } catch (error) {
@@ -570,6 +572,143 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+
+
+  async function saveSchemaAssociations(): Promise<void> {
+    try {
+      if (window.electronAPI && typeof window.electronAPI.writeConfigFile === 'function') {
+        // Save schema associations to a config file
+        const associations = schemas.value.map(schema => ({
+          schemaPath: schema.path,
+          schemaName: schema.name,
+          associatedFiles: schema.associatedFiles.map(file => ({
+            name: file.name,
+            path: file.path,
+            isValid: file.isValid,
+            errors: file.errors
+          }))
+        }))
+        
+        await window.electronAPI.writeConfigFile('schema-associations.json', JSON.stringify(associations, null, 2))
+        logInfo('Schema associations saved to config file')
+      } else {
+        // Fallback: save to localStorage
+        const associations = schemas.value.map(schema => ({
+          schemaPath: schema.path,
+          schemaName: schema.name,
+          associatedFiles: schema.associatedFiles.map(file => ({
+            name: file.name,
+            path: file.path,
+            content: file.content,
+            isValid: file.isValid,
+            errors: file.errors
+          }))
+        }))
+        
+        localStorage.setItem('schema-associations', JSON.stringify(associations))
+        logInfo('Schema associations saved to localStorage')
+      }
+    } catch (error) {
+      logError('Failed to save schema associations', error)
+    }
+  }
+
+  async function loadSchemaAssociations(): Promise<void> {
+    logInfo('loadSchemaAssociations called')
+    
+    try {
+      let associations: any[] = []
+      
+      if (window.electronAPI && typeof window.electronAPI.listConfigFiles === 'function') {
+        // Try to load from config files
+        try {
+          const result = await window.electronAPI.listConfigFiles()
+          if (result.success && result.files) {
+            const associationsFile = result.files.find(file => file.name === 'schema-associations.json')
+            if (associationsFile && associationsFile.content) {
+              associations = Array.isArray(associationsFile.content) ? associationsFile.content : []
+              logInfo('Schema associations loaded from config file', { count: associations.length })
+            }
+          }
+        } catch (error) {
+          logInfo('No schema associations config file found or failed to load, continuing without associations')
+        }
+      } else {
+        // Fallback: load from localStorage
+        try {
+          const data = localStorage.getItem('schema-associations')
+          if (data) {
+            associations = JSON.parse(data)
+            logInfo('Schema associations loaded from localStorage', { count: associations.length })
+          }
+        } catch (error) {
+          logInfo('No schema associations in localStorage, continuing without associations')
+        }
+      }
+      
+      // Apply associations to loaded schemas
+      for (const association of associations) {
+        const schema = schemas.value.find(s => s.path === association.schemaPath || s.name === association.schemaName)
+        if (schema) {
+          // Load associated files
+          for (const fileInfo of association.associatedFiles) {
+            try {
+              let jsonContent = null
+              
+              if (window.electronAPI && typeof window.electronAPI.readFile === 'function' && !fileInfo.path.startsWith('mock://')) {
+                // Try to reload the actual file content
+                const fileResult = await window.electronAPI.readFile(fileInfo.path)
+                if (fileResult.success) {
+                  jsonContent = typeof fileResult.data === 'string' 
+                    ? JSON.parse(fileResult.data) 
+                    : fileResult.data
+                } else {
+                  logInfo(`File ${fileInfo.path} could not be loaded, using cached data if available`)
+                }
+              }
+              
+              // Use cached content if file couldn't be reloaded (for localStorage or failed file reads)
+              if (!jsonContent && fileInfo.content) {
+                jsonContent = fileInfo.content
+              }
+              
+              if (jsonContent) {
+                // Re-validate against current schema
+                const validation = validateJsonWithSchema(jsonContent, schema.content)
+                
+                const jsonFile: JsonFile = {
+                  name: fileInfo.name,
+                  path: fileInfo.path,
+                  content: jsonContent,
+                  isValid: validation.isValid,
+                  errors: validation.errors
+                }
+                
+                schema.associatedFiles.push(jsonFile)
+                
+                // Add to global jsonFiles array if not already present
+                const existingFileIndex = jsonFiles.value.findIndex(f => f.path === fileInfo.path)
+                if (existingFileIndex === -1) {
+                  jsonFiles.value.push(jsonFile)
+                } else {
+                  jsonFiles.value[existingFileIndex] = jsonFile
+                }
+              }
+            } catch (error) {
+              logError(`Failed to load associated file ${fileInfo.name}`, error)
+            }
+          }
+          
+          logInfo(`Loaded ${schema.associatedFiles.length} associated files for schema ${schema.name}`)
+        }
+      }
+      
+      logInfo('Schema associations loading completed')
+    } catch (error) {
+      logError('Failed to load schema associations', error)
+    }
+  }
+
   return {
     // State
     currentSchema,
@@ -599,10 +738,12 @@ export const useAppStore = defineStore('app', () => {
     validateJsonWithSchema,
     addSchema,
     loadSchemas,
+    loadSchemaAssociations,
     loadJsonFiles,
     saveJsonFile,
     saveSchema,
     deleteSchema,
-    deleteJsonFile
+    deleteJsonFile,
+    saveSchemaAssociations
   }
 })

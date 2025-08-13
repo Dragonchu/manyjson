@@ -17,6 +17,9 @@
     
     <!-- Context Menu -->
     <ContextMenu />
+    
+    <!-- Add File Popup -->
+    <AddFilePopup />
   </div>
 </template>
 
@@ -26,6 +29,7 @@ import LeftPanel from '@/components/LeftPanel.vue'
 import MiddlePanel from '@/components/MiddlePanel.vue'
 import RightPanel from '@/components/RightPanel.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
+import AddFilePopup from '@/components/AddFilePopup.vue'
 import { useAppStore } from '@/stores/app'
 
 const appStore = useAppStore()
