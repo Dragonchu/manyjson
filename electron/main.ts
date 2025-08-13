@@ -7,8 +7,102 @@
 import { app, BrowserWindow, nativeTheme, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { promises as fs } from 'fs'
+import { constants } from 'fs'
 
 const isDev = process.env.NODE_ENV === 'development'
+
+// Logging utility
+function logInfo(message: string, ...args: any[]) {
+  console.log(`[INFO] ${new Date().toISOString()} - ${message}`, ...args)
+}
+
+function logError(message: string, error?: any) {
+  console.error(`[ERROR] ${new Date().toISOString()} - ${message}`, error)
+}
+
+function logDebug(message: string, ...args: any[]) {
+  if (isDev) {
+    console.log(`[DEBUG] ${new Date().toISOString()} - ${message}`, ...args)
+  }
+}
+
+// Filename validation utility
+function validateFilename(filename: string): { isValid: boolean; error?: string } {
+  if (!filename || typeof filename !== 'string') {
+    return { isValid: false, error: 'Filename is required and must be a string' }
+  }
+
+  const trimmedFilename = filename.trim()
+  if (!trimmedFilename) {
+    return { isValid: false, error: 'Filename cannot be empty' }
+  }
+
+  // Check for path traversal attempts
+  if (trimmedFilename.includes('..') || trimmedFilename.includes('/') || trimmedFilename.includes('\\')) {
+    return { isValid: false, error: 'Filename cannot contain path separators or relative path references' }
+  }
+
+  // Check for invalid characters (Windows + some additional unsafe characters)
+  const invalidChars = /[<>:"|?*\x00-\x1f]/
+  if (invalidChars.test(trimmedFilename)) {
+    return { isValid: false, error: 'Filename contains invalid characters' }
+  }
+
+  // Check length (most filesystems have a 255 byte limit)
+  if (Buffer.byteLength(trimmedFilename, 'utf8') > 255) {
+    return { isValid: false, error: 'Filename is too long' }
+  }
+
+  // Check for reserved names (Windows)
+  const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i
+  if (reservedNames.test(trimmedFilename)) {
+    return { isValid: false, error: 'Filename uses a reserved name' }
+  }
+
+  return { isValid: true }
+}
+
+// Directory creation with proper error handling and retries
+async function ensureConfigDirectoryWithRetry(maxRetries = 3): Promise<string> {
+  const configDir = getConfigDirectory()
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      logDebug(`Ensuring config directory exists (attempt ${attempt}/${maxRetries}):`, configDir)
+      
+      // Check if directory exists and is accessible
+      try {
+        await fs.access(configDir, constants.F_OK)
+        logDebug('Config directory already exists')
+      } catch (error) {
+        logInfo('Creating config directory:', configDir)
+        await fs.mkdir(configDir, { recursive: true })
+        logInfo('Config directory created successfully')
+      }
+
+      // Verify write permissions
+      try {
+        await fs.access(configDir, constants.W_OK)
+        logDebug('Config directory is writable')
+        return configDir
+      } catch (error) {
+        logError('Config directory is not writable', error)
+        throw new Error(`Config directory is not writable: ${configDir}`)
+      }
+    } catch (error) {
+      logError(`Failed to create or access config directory (attempt ${attempt}/${maxRetries})`, error)
+      
+      if (attempt === maxRetries) {
+        throw error
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 100 * attempt))
+    }
+  }
+  
+  throw new Error('Failed to ensure config directory after all retries')
+}
 
 /**
  * 创建主窗口
@@ -45,119 +139,233 @@ function createMainWindow(): BrowserWindow {
 // 获取应用配置目录
 function getConfigDirectory(): string {
   const userDataPath = app.getPath('userData')
-  return join(userDataPath, 'schemas')
+  const configDir = join(userDataPath, 'schemas')
+  logDebug('Config directory path:', configDir)
+  return configDir
 }
 
 // 确保配置目录存在
 async function ensureConfigDirectory(): Promise<string> {
-  const configDir = getConfigDirectory()
-  try {
-    await fs.mkdir(configDir, { recursive: true })
-    return configDir
-  } catch (error) {
-    console.error('Failed to create config directory:', error)
-    throw error
-  }
+  return ensureConfigDirectoryWithRetry()
 }
 
 // IPC 处理程序
 ipcMain.handle('write-json-file', async (event, filePath: string, content: string) => {
+  logInfo('write-json-file requested', { filePath, contentLength: content.length })
+  
   try {
+    // Verify the directory exists and is writable
+    const directory = join(filePath, '..')
+    try {
+      await fs.access(directory, constants.W_OK)
+      logDebug('Target directory is writable:', directory)
+    } catch (error) {
+      logError('Target directory is not writable', { directory, error })
+      throw new Error(`Directory is not writable: ${directory}`)
+    }
+
     await fs.writeFile(filePath, content, 'utf8')
+    logInfo('File written successfully:', filePath)
     return { success: true }
   } catch (error) {
-    console.error('Failed to write file:', error)
+    logError('Failed to write file', { filePath, error: error instanceof Error ? error.message : error, stack: error instanceof Error ? error.stack : undefined })
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })
 
 // 获取配置目录路径
 ipcMain.handle('get-config-directory', async () => {
+  logInfo('get-config-directory requested')
+  
   try {
     const configDir = await ensureConfigDirectory()
+    logInfo('Config directory ready:', configDir)
     return { success: true, path: configDir }
   } catch (error) {
-    console.error('Failed to get config directory:', error)
+    logError('Failed to get config directory', error)
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })
 
 // 写入配置文件（使用配置目录）
 ipcMain.handle('write-config-file', async (event, fileName: string, content: string) => {
+  logInfo('write-config-file requested', { fileName, contentLength: content.length })
+  
   try {
+    // Validate filename first
+    const validation = validateFilename(fileName)
+    if (!validation.isValid) {
+      logError('Invalid filename provided', { fileName, error: validation.error })
+      return { success: false, error: validation.error }
+    }
+
+    // Validate content
+    if (typeof content !== 'string') {
+      logError('Invalid content type', { contentType: typeof content })
+      return { success: false, error: 'Content must be a string' }
+    }
+
+    if (content.length > 10 * 1024 * 1024) { // 10MB limit
+      logError('Content too large', { contentLength: content.length })
+      return { success: false, error: 'Content is too large (maximum 10MB)' }
+    }
+
     const configDir = await ensureConfigDirectory()
     const filePath = join(configDir, fileName)
-    await fs.writeFile(filePath, content, 'utf8')
+    
+    logDebug('Writing config file', { configDir, fileName, filePath })
+
+    // Check if we can write to the specific file location
+    try {
+      // Try to access the file if it exists
+      await fs.access(filePath, constants.F_OK)
+      logDebug('File already exists, checking write permissions')
+      await fs.access(filePath, constants.W_OK)
+    } catch (error) {
+      // File doesn't exist, which is fine for new files
+      logDebug('File does not exist, will create new file')
+    }
+
+    // Atomic write operation using temporary file
+    const tempFilePath = `${filePath}.tmp`
+    try {
+      await fs.writeFile(tempFilePath, content, 'utf8')
+      await fs.rename(tempFilePath, filePath)
+      logInfo('Config file written successfully', { filePath, size: content.length })
+    } catch (writeError) {
+      // Clean up temp file if it exists
+      try {
+        await fs.unlink(tempFilePath)
+      } catch (cleanupError) {
+        logDebug('No temp file to clean up')
+      }
+      throw writeError
+    }
+    
     return { success: true, filePath }
   } catch (error) {
-    console.error('Failed to write config file:', error)
+    logError('Failed to write config file', { 
+      fileName, 
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      code: (error as any)?.code,
+      errno: (error as any)?.errno,
+      syscall: (error as any)?.syscall,
+      path: (error as any)?.path
+    })
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })
 
 // 读取配置目录中的所有文件
 ipcMain.handle('list-config-files', async () => {
+  logInfo('list-config-files requested')
+  
   try {
     const configDir = await ensureConfigDirectory()
+    logDebug('Listing files in config directory:', configDir)
+    
     const files = await fs.readdir(configDir)
-    const jsonFiles = files.filter(file => file.endsWith('.json'))
+    logDebug('Found files:', files)
+    
+    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.endsWith('.tmp'))
+    logInfo('Found JSON files:', jsonFiles)
     
     const fileInfos = await Promise.all(
       jsonFiles.map(async (fileName) => {
         const filePath = join(configDir, fileName)
-        const content = await fs.readFile(filePath, 'utf8')
-        return {
-          name: fileName,
-          path: filePath,
-          content: JSON.parse(content)
+        try {
+          const content = await fs.readFile(filePath, 'utf8')
+          const parsedContent = JSON.parse(content)
+          logDebug('Successfully read file:', { fileName, size: content.length })
+          return {
+            name: fileName,
+            path: filePath,
+            content: parsedContent
+          }
+        } catch (error) {
+          logError('Failed to read or parse file', { fileName, error })
+          throw error
         }
       })
     )
     
+    logInfo('Successfully loaded config files', { count: fileInfos.length })
     return { success: true, files: fileInfos }
   } catch (error) {
-    console.error('Failed to list config files:', error)
+    logError('Failed to list config files', error)
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })
 
 ipcMain.handle('show-open-dialog', async (event, options) => {
+  logInfo('show-open-dialog requested', options)
+  
   try {
     const result = await dialog.showOpenDialog(options)
+    logDebug('Open dialog result:', result)
     return result
   } catch (error) {
-    console.error('Failed to show open dialog:', error)
+    logError('Failed to show open dialog', error)
     return { canceled: true, filePaths: [] }
   }
 })
 
 ipcMain.handle('show-save-dialog', async (event, options) => {
+  logInfo('show-save-dialog requested', options)
+  
   try {
     const result = await dialog.showSaveDialog(options)
+    logDebug('Save dialog result:', result)
     return result
   } catch (error) {
-    console.error('Failed to show save dialog:', error)
+    logError('Failed to show save dialog', error)
     return { canceled: true, filePath: undefined }
   }
 })
 
 ipcMain.handle('delete-file', async (event, filePath: string) => {
+  logInfo('delete-file requested', { filePath })
+  
   try {
+    // Check if file exists and is accessible
+    await fs.access(filePath, constants.F_OK)
+    logDebug('File exists, attempting to delete:', filePath)
+    
     await fs.unlink(filePath)
+    logInfo('File deleted successfully:', filePath)
     return { success: true }
   } catch (error) {
-    console.error('Failed to delete file:', error)
+    logError('Failed to delete file', { 
+      filePath,
+      error: error instanceof Error ? error.message : error,
+      code: (error as any)?.code,
+      errno: (error as any)?.errno
+    })
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })
 
 // 应用生命周期管理
 app.whenReady().then(() => {
+  logInfo('App is ready, creating main window')
   createMainWindow()
+
+  // Log system information
+  logInfo('System information', {
+    platform: process.platform,
+    arch: process.arch,
+    version: process.version,
+    electronVersion: process.versions.electron,
+    userDataPath: app.getPath('userData'),
+    tempPath: app.getPath('temp'),
+    homePath: app.getPath('home')
+  })
 
   // macOS 特有行为：Dock 点击时重新创建窗口
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
+      logInfo('Reactivating app, creating new window')
       createMainWindow()
     }
   })
@@ -165,8 +373,10 @@ app.whenReady().then(() => {
 
 // 所有窗口关闭时的行为
 app.on('window-all-closed', () => {
+  logInfo('All windows closed')
   // macOS 上除非用户明确退出（Cmd + Q），否则保持应用运行
   if (process.platform !== 'darwin') {
+    logInfo('Quitting app')
     app.quit()
   }
 })
@@ -176,6 +386,6 @@ app.on('web-contents-created', (event, contents) => {
   contents.on('new-window', (event, navigationUrl) => {
     // 阻止新窗口创建，确保应用安全
     event.preventDefault()
-    console.warn('Blocked new window creation:', navigationUrl)
+    logError('Blocked new window creation', { url: navigationUrl })
   })
 })
