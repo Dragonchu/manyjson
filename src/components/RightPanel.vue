@@ -2,10 +2,20 @@
   <div class="right-panel">
     <div class="right-panel-header">
       <div class="right-panel-title">
-        {{ appStore.currentJsonFile ? appStore.currentJsonFile.name : 'JSON Content Viewer' }}
+        {{ 
+          appStore.isViewingSchema && appStore.currentSchema 
+            ? `Schema: ${appStore.currentSchema.name}` 
+            : appStore.currentJsonFile 
+              ? appStore.currentJsonFile.name 
+              : 'JSON Content Viewer' 
+        }}
       </div>
       <div class="right-panel-controls">
-        <div class="validation-status" v-if="appStore.currentJsonFile">
+        <div class="validation-status" v-if="appStore.isViewingSchema && appStore.currentSchema">
+          <div class="status-icon schema"></div>
+          <span class="status-schema">Schema Definition</span>
+        </div>
+        <div class="validation-status" v-else-if="appStore.currentJsonFile">
           <div 
             class="status-icon" 
             :class="{ valid: appStore.currentJsonFile.isValid, invalid: !appStore.currentJsonFile.isValid }"
@@ -14,7 +24,12 @@
             {{ appStore.currentJsonFile.isValid ? 'Valid JSON' : `${appStore.currentJsonFile.errors.length} validation errors` }}
           </span>
         </div>
-        <div class="panel-actions" v-if="appStore.currentJsonFile">
+        <div class="panel-actions" v-if="appStore.isViewingSchema && appStore.currentSchema">
+          <button class="action-btn" @click="copySchemaToClipboard" title="Copy Schema">
+            <CopyIcon />
+          </button>
+        </div>
+        <div class="panel-actions" v-else-if="appStore.currentJsonFile">
           <button class="action-btn" @click="copyToClipboard" title="Copy JSON">
             <CopyIcon />
           </button>
@@ -31,8 +46,16 @@
       </div>
     </div>
     <div class="json-content">
+      <!-- Schema Viewer -->
+      <div v-if="appStore.isViewingSchema && appStore.currentSchema" class="json-viewer">
+        <div class="schema-info-banner">
+          <strong>Viewing Schema: {{ appStore.currentSchema.name }}</strong>
+        </div>
+        <JsonHighlight :json="appStore.currentSchema.content" />
+      </div>
+
       <!-- Validation Errors Display -->
-      <div v-if="appStore.currentJsonFile && !appStore.currentJsonFile.isValid && !appStore.isEditMode" class="validation-errors">
+      <div v-else-if="appStore.currentJsonFile && !appStore.currentJsonFile.isValid && !appStore.isEditMode" class="validation-errors">
         <div class="validation-errors-header">
           <div class="validation-errors-header-left">
             <span>⚠️</span>
@@ -54,13 +77,13 @@
       </div>
 
       <!-- JSON Viewer -->
-      <div v-if="appStore.currentJsonFile && !appStore.isEditMode" class="json-viewer">
+      <div v-else-if="appStore.currentJsonFile && !appStore.isEditMode" class="json-viewer">
         <JsonHighlight :json="appStore.currentJsonFile.content" />
       </div>
 
       <!-- JSON Editor -->
       <textarea 
-        v-if="appStore.currentJsonFile && appStore.isEditMode"
+        v-else-if="appStore.currentJsonFile && appStore.isEditMode"
         v-model="editContent"
         class="json-editor"
         spellcheck="false"
@@ -68,11 +91,11 @@
       ></textarea>
 
       <!-- Empty State -->
-      <div v-if="!appStore.currentJsonFile" class="json-viewer">
+      <div v-else class="json-viewer">
         <div class="empty-state">
           <div class="empty-state-icon">🔍</div>
-          <div class="empty-state-title">No JSON File Selected</div>
-          <div class="empty-state-description">Select a JSON file from the middle panel to view its content and validation results</div>
+          <div class="empty-state-title">No Content Selected</div>
+          <div class="empty-state-description">Select a JSON file from the middle panel to view its content, or right-click a schema to view its definition</div>
         </div>
       </div>
     </div>
@@ -167,6 +190,18 @@ async function copyToClipboard() {
     appStore.showStatus('JSON copied to clipboard', 'success')
   } catch (error) {
     appStore.showStatus('Failed to copy to clipboard', 'error')
+  }
+}
+
+async function copySchemaToClipboard() {
+  if (!appStore.currentSchema) return
+  
+  try {
+    const content = JSON.stringify(appStore.currentSchema.content, null, 2)
+    await navigator.clipboard.writeText(content)
+    appStore.showStatus('Schema copied to clipboard', 'success')
+  } catch (error) {
+    appStore.showStatus('Failed to copy schema to clipboard', 'error')
   }
 }
 </script>
@@ -344,5 +379,27 @@ async function copyToClipboard() {
   padding: 1px 6px;
   font-size: 9px;
   font-weight: 600;
+}
+
+/* Schema viewing styles */
+.status-icon.schema {
+  width: 12px;
+  height: 12px;
+  background: var(--linear-accent);
+  border-radius: 50%;
+}
+
+.status-schema {
+  color: var(--linear-accent);
+  font-weight: 500;
+}
+
+.schema-info-banner {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--linear-accent);
+  border-radius: 6px;
+  color: var(--linear-accent);
 }
 </style>

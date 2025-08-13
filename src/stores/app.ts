@@ -38,6 +38,7 @@ export const useAppStore = defineStore('app', () => {
   const schemas = ref<SchemaInfo[]>([])
   const jsonFiles = ref<JsonFile[]>([])
   const isEditMode = ref(false)
+  const isViewingSchema = ref(false)
   const originalJsonContent = ref<string | null>(null)
   const statusMessage = ref('')
   const statusType = ref<'success' | 'error' | 'info'>('info')
@@ -59,17 +60,28 @@ export const useAppStore = defineStore('app', () => {
     currentSchema.value = schema
     currentJsonFile.value = null
     isEditMode.value = false
+    isViewingSchema.value = false
   }
 
   function setCurrentJsonFile(file: JsonFile | null) {
     currentJsonFile.value = file
     isEditMode.value = false
+    isViewingSchema.value = false
   }
 
   function setEditMode(enabled: boolean) {
     isEditMode.value = enabled
+    isViewingSchema.value = false
     if (enabled && currentJsonFile.value) {
       originalJsonContent.value = JSON.stringify(currentJsonFile.value.content, null, 2)
+    }
+  }
+
+  function setSchemaViewMode(enabled: boolean) {
+    isViewingSchema.value = enabled
+    if (enabled) {
+      currentJsonFile.value = null
+      isEditMode.value = false
     }
   }
 
@@ -509,6 +521,7 @@ export const useAppStore = defineStore('app', () => {
     schemas,
     jsonFiles,
     isEditMode,
+    isViewingSchema,
     originalJsonContent,
     statusMessage,
     statusType,
@@ -522,6 +535,7 @@ export const useAppStore = defineStore('app', () => {
     setCurrentSchema,
     setCurrentJsonFile,
     setEditMode,
+    setSchemaViewMode,
     showStatus,
     validateJsonWithSchema,
     addSchema,
