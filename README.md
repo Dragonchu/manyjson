@@ -134,9 +134,9 @@ npm run test -- --watch
 1. **View Schemas**: Browse schemas organized in folders
 2. **Select Schema**: Click on any schema to view associated files
 3. **Context Menu**: Right-click on schemas for additional options
-   - View Schema: Display schema definition
+   - View Schema: Display schema definition in the right panel
    - Edit Schema: Modify schema (placeholder)
-   - Delete Schema: Remove schema (placeholder)
+   - Delete Schema: Remove schema
 
 ### JSON Files (Middle Panel)
 1. **File List**: View all JSON files associated with selected schema

@@ -60,8 +60,9 @@ function hideContextMenu() {
 
 function handleViewSchema() {
   if (currentSchema.value) {
+    appStore.setCurrentSchema(currentSchema.value)
+    appStore.setSchemaViewMode(true)
     appStore.showStatus(`Viewing schema: ${currentSchema.value.name}`, 'info')
-    // TODO: Implement schema viewing
   }
   hideContextMenu()
 }

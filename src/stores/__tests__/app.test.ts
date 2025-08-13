@@ -33,6 +33,7 @@ describe('App Store', () => {
     expect(store.schemas).toEqual([])
     expect(store.jsonFiles).toEqual([])
     expect(store.isEditMode).toBe(false)
+    expect(store.isViewingSchema).toBe(false)
     expect(store.statusMessage).toBe('')
   })
 
@@ -50,6 +51,34 @@ describe('App Store', () => {
     expect(store.currentSchema).toEqual(mockSchema)
     expect(store.currentJsonFile).toBeNull()
     expect(store.isEditMode).toBe(false)
+    expect(store.isViewingSchema).toBe(false)
+  })
+
+  it('should set schema view mode', () => {
+    const store = useAppStore()
+    const mockJsonFile = {
+      name: 'test.json',
+      path: '/test/path.json',
+      content: { name: 'test' },
+      isValid: true,
+      errors: []
+    }
+
+    // Set up some initial state
+    store.setCurrentJsonFile(mockJsonFile)
+    store.setEditMode(true)
+
+    // Enable schema view mode
+    store.setSchemaViewMode(true)
+    
+    expect(store.isViewingSchema).toBe(true)
+    expect(store.currentJsonFile).toBeNull()
+    expect(store.isEditMode).toBe(false)
+
+    // Disable schema view mode
+    store.setSchemaViewMode(false)
+    
+    expect(store.isViewingSchema).toBe(false)
   })
 
   it('should validate JSON with schema', () => {
