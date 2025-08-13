@@ -360,6 +360,96 @@ ipcMain.handle('delete-file', async (event, filePath: string) => {
   }
 })
 
+// Create JSON file directory for a schema
+ipcMain.handle('create-schema-json-directory', async (event, schemaName: string) => {
+  logInfo('create-schema-json-directory requested', { schemaName })
+  
+  try {
+    const configDir = await ensureConfigDirectory()
+    const jsonDir = join(configDir, 'json-files', schemaName.replace(/[^a-zA-Z0-9.-]/g, '_'))
+    
+    // Create directory if it doesn't exist
+    await fs.mkdir(jsonDir, { recursive: true })
+    logInfo('Schema JSON directory created/verified:', jsonDir)
+    
+    return { success: true, path: jsonDir }
+  } catch (error) {
+    logError('Failed to create schema JSON directory', { schemaName, error })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// Write JSON file to schema-specific directory
+ipcMain.handle('write-schema-json-file', async (event, schemaName: string, fileName: string, content: string) => {
+  logInfo('write-schema-json-file requested', { schemaName, fileName, contentLength: content.length })
+  
+  try {
+    // Ensure the schema directory exists
+    const configDir = await ensureConfigDirectory()
+    const schemaDir = join(configDir, 'json-files', schemaName.replace(/[^a-zA-Z0-9.-]/g, '_'))
+    await fs.mkdir(schemaDir, { recursive: true })
+    
+    // Ensure filename has .json extension
+    const safeFileName = fileName.endsWith('.json') ? fileName : `${fileName}.json`
+    const filePath = join(schemaDir, safeFileName)
+    
+    // Write the file
+    await fs.writeFile(filePath, content, 'utf8')
+    logInfo('Schema JSON file written successfully:', filePath)
+    
+    return { success: true, filePath }
+  } catch (error) {
+    logError('Failed to write schema JSON file', { schemaName, fileName, error })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// List all JSON files for a specific schema
+ipcMain.handle('list-schema-json-files', async (event, schemaName: string) => {
+  logInfo('list-schema-json-files requested', { schemaName })
+  
+  try {
+    const configDir = await ensureConfigDirectory()
+    const schemaDir = join(configDir, 'json-files', schemaName.replace(/[^a-zA-Z0-9.-]/g, '_'))
+    
+    // Check if schema directory exists
+    try {
+      await fs.access(schemaDir, constants.F_OK)
+    } catch (error) {
+      // Directory doesn't exist, return empty list
+      logInfo('Schema directory does not exist, returning empty list:', schemaDir)
+      return { success: true, files: [] }
+    }
+    
+    const files = await fs.readdir(schemaDir)
+    const jsonFiles = files.filter(file => file.endsWith('.json'))
+    
+    const fileInfos = await Promise.all(
+      jsonFiles.map(async (fileName) => {
+        const filePath = join(schemaDir, fileName)
+        try {
+          const content = await fs.readFile(filePath, 'utf8')
+          const parsedContent = JSON.parse(content)
+          return {
+            name: fileName,
+            path: filePath,
+            content: parsedContent
+          }
+        } catch (error) {
+          logError('Failed to read schema JSON file', { fileName, error })
+          throw error
+        }
+      })
+    )
+    
+    logInfo('Successfully loaded schema JSON files', { schemaName, count: fileInfos.length })
+    return { success: true, files: fileInfos }
+  } catch (error) {
+    logError('Failed to list schema JSON files', { schemaName, error })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
 // 应用生命周期管理
 app.whenReady().then(() => {
   logInfo('App is ready, creating main window')

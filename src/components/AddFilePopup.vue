@@ -168,39 +168,21 @@ async function saveJsonFile() {
     // Validate against schema
     const validation = appStore.validateJsonWithSchema(parsedContent, schema.value.content)
     
-    // Save the JSON file to disk first
+    // Save the JSON file to schema-specific directory
     let actualFilePath: string
     try {
-      if (window.electronAPI) {
-        // Prompt user for save location
-        const dialogResult = await window.electronAPI.showSaveDialog({
-          title: 'Save JSON File',
-          defaultPath: fullFileName,
-          filters: [
-            { name: 'JSON Files', extensions: ['json'] },
-            { name: 'All Files', extensions: ['*'] }
-          ]
-        })
-        
-        if (dialogResult.canceled || !dialogResult.filePath) {
-          appStore.showStatus('Save operation was cancelled', 'info')
-          return
-        }
-        
-        // Save the file to the selected path
-        const saveResult = await window.electronAPI.writeJsonFile(dialogResult.filePath, editContent.value)
-        if (!saveResult.success) {
-          appStore.showStatus(`Failed to save file: ${saveResult.error}`, 'error')
-          return
-        }
-        actualFilePath = dialogResult.filePath
-      } else {
-        // Fallback for web mode - use mock path
-        actualFilePath = `new://${fullFileName}`
-        appStore.showStatus('File saved (mock - web mode)', 'success')
+      // Use the new structured file saving system
+      const saveResult = await appStore.saveSchemaJsonFile(schema.value.name, fullFileName, editContent.value)
+      
+      if (!saveResult.success) {
+        appStore.showStatus(`Failed to save JSON file: ${saveResult.error || 'Unknown error'}`, 'error')
+        return
       }
+      
+      actualFilePath = saveResult.filePath || `structured://${schema.value.name}/${fullFileName}`
+      appStore.showStatus(`JSON file saved to structured location`, 'success')
     } catch (error) {
-      appStore.showStatus(`Failed to save file: ${error}`, 'error')
+      appStore.showStatus(`Failed to save JSON file: ${error}`, 'error')
       return
     }
     
