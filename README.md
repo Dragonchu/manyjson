@@ -45,6 +45,7 @@ npm run electron:build
 
 ```
 ├── doc/                    # Documentation files
+├── example/                # Example JSON files and schemas
 ├── test/                   # Test files and test data
 ├── src/
 │   ├── components/         # Vue components
