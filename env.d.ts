@@ -7,10 +7,14 @@ declare module '*.vue' {
 }
 
 interface Window {
-  electronAPI: {
+  electronAPI?: {
+    readFile: (filename: string) => Promise<any>
     writeJsonFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>
+    deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
+    getConfigDirectory: () => Promise<{ success: boolean; path?: string; error?: string }>
+    writeConfigFile: (fileName: string, content: string) => Promise<{ success: boolean; filePath?: string; error?: string }>
+    listConfigFiles: () => Promise<{ success: boolean; files?: Array<{ name: string; path: string; content: any }>; error?: string }>
     showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
     showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath?: string }>
-    deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
   }
 }
