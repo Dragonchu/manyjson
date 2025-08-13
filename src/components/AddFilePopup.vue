@@ -28,7 +28,7 @@
                 class="action-btn primary" 
                 @click="saveJsonFile"
                 :disabled="!fileName.value?.trim() || hasSyntaxError"
-                title="Save JSON file"
+                :title="getButtonTooltip()"
               >
                 <SaveIcon />
               </button>
@@ -111,12 +111,35 @@ const hasSyntaxError = computed(() => {
   return editErrors.value.some(error => error.message === 'Invalid JSON syntax')
 })
 
+function getButtonTooltip() {
+  if (!fileName.value?.trim()) {
+    return 'Please enter a file name'
+  }
+  if (hasSyntaxError.value) {
+    return 'Please fix JSON syntax errors'
+  }
+  return 'Save JSON file'
+}
+
 function showPopup(schemaInfo: SchemaInfo) {
   schema.value = schemaInfo
   isVisible.value = true
   fileName.value = ''
   editContent.value = '{}'
   editErrors.value = []
+  
+  // Trigger validation after setting up the popup
+  setTimeout(() => {
+    validateEditContent()
+    console.log('Popup state:', {
+      fileName: fileName.value,
+      hasFileName: !!fileName.value?.trim(),
+      editContent: editContent.value,
+      editErrors: editErrors.value,
+      hasSyntaxError: hasSyntaxError.value,
+      buttonDisabled: !fileName.value?.trim() || hasSyntaxError.value
+    })
+  }, 100)
   
   // Focus the file name input after animation
   setTimeout(() => {
