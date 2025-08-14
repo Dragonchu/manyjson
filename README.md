@@ -1,6 +1,6 @@
-# ManyJson - JSON Schema Manager
+# ManyJson - JSON Schema And File Manager
 
-A modern JSON Schema management application built with **Vue 3**, **TypeScript**, and **Electron**, featuring real-time validation and an intuitive three-column interface.
+A modern JSON Schema and JSON File management application.
 
 ## Features
 
