@@ -415,7 +415,7 @@ describe('App Store', () => {
       expect(store.schemas[0].name).toBe('user-schema.json')
       expect(store.schemas[0].path).toBe('/config/user-schema.json')
       expect(store.schemas[0].content).toEqual(mockFiles[0].content)
-      expect(store.statusMessage).toContain('Loaded 2 schemas from config directory')
+      expect(store.statusMessage).toContain('Loaded 2 schemas with associated JSON files')
     })
 
     it('should fallback to mock data when Electron API fails', async () => {
