@@ -130,7 +130,15 @@ function createMainWindow(): BrowserWindow {
     // 开发模式下打开开发者工具
     mainWindow.webContents.openDevTools()
   } else {
-    mainWindow.loadFile(join(__dirname, '../dist/index.html'))
+    // 在打包后的应用中，文件结构是: app.asar/dist/index.html
+    // __dirname 指向 app.asar/dist-electron，所以需要 ../dist/index.html
+    const htmlPath = join(__dirname, '../dist/index.html')
+    logInfo('Loading HTML file from:', htmlPath)
+    mainWindow.loadFile(htmlPath).catch((error) => {
+      logError('Failed to load HTML file', { htmlPath, error })
+      // 尝试开发者工具以便调试
+      mainWindow.webContents.openDevTools()
+    })
   }
 
   return mainWindow
