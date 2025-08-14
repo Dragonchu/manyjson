@@ -107,7 +107,7 @@ async function ensureConfigDirectoryWithRetry(maxRetries = 3): Promise<string> {
 /**
  * 创建主窗口
  */
-function createMainWindow(): BrowserWindow {
+async function createMainWindow(): Promise<BrowserWindow> {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -130,7 +130,22 @@ function createMainWindow(): BrowserWindow {
     // 开发模式下打开开发者工具
     mainWindow.webContents.openDevTools()
   } else {
-    mainWindow.loadFile(join(__dirname, '../dist/index.html'))
+    const htmlPath = join(__dirname, '../dist/index.html')
+    
+    // Check if the file exists before loading
+    try {
+      await fs.access(htmlPath, constants.F_OK)
+      mainWindow.loadFile(htmlPath)
+    } catch (error) {
+      logError('HTML file does not exist!', error)
+      // Try to show an error in the window
+      mainWindow.loadURL(`data:text/html,<html><body style="background:#0a0a0a;color:white;font-family:monospace;padding:20px;"><h1>Error: Cannot load application</h1><p>The application files are missing. Please rebuild the application.</p></body></html>`)
+    }
+    
+    // Add error handling for renderer process
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      logError('Renderer process failed to load', { errorCode, errorDescription, validatedURL })
+    })
   }
 
   return mainWindow
@@ -451,9 +466,9 @@ ipcMain.handle('list-schema-json-files', async (event, schemaName: string) => {
 })
 
 // 应用生命周期管理
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   logInfo('App is ready, creating main window')
-  createMainWindow()
+  await createMainWindow()
 
   // Log system information
   logInfo('System information', {
@@ -467,10 +482,10 @@ app.whenReady().then(() => {
   })
 
   // macOS 特有行为：Dock 点击时重新创建窗口
-  app.on('activate', () => {
+  app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       logInfo('Reactivating app, creating new window')
-      createMainWindow()
+      await createMainWindow()
     }
   })
 })

@@ -6,7 +6,21 @@
   <title>ManyJson - JSON Schema Manager</title>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <!-- Loading placeholder in case Vue takes time to load -->
+    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: rgba(255, 255, 255, 0.95); font-family: 'Inter', sans-serif;">
+      <div style="text-align: center;">
+        <div style="width: 40px; height: 40px; border: 4px solid rgba(99, 102, 241, 0.3); border-top: 4px solid #6366f1; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+        <div>Loading ManyJson...</div>
+      </div>
+    </div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

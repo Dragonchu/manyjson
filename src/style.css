@@ -57,6 +57,12 @@ body {
   line-height: 1.6;
 }
 
+/* Ensure app takes full viewport */
+#app {
+  min-height: 100vh;
+  background: var(--linear-bg-primary);
+}
+
 /* Utility Classes */
 .btn-small {
   padding: 6px 12px;
