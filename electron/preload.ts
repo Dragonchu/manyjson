@@ -39,6 +39,16 @@ const electronAPI = {
   // 保存文件对话框
   showSaveDialog: (options: any): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('show-save-dialog', options),
+
+  // Schema JSON file operations
+  createSchemaJsonDirectory: (schemaName: string): Promise<{ success: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('create-schema-json-directory', schemaName),
+
+  writeSchemaJsonFile: (schemaName: string, fileName: string, content: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke('write-schema-json-file', schemaName, fileName, content),
+
+  listSchemaJsonFiles: (schemaName: string): Promise<{ success: boolean; files?: Array<{ name: string; path: string; content: any }>; error?: string }> =>
+    ipcRenderer.invoke('list-schema-json-files', schemaName),
 }
 
 // 通过 contextBridge 安全地暴露 API

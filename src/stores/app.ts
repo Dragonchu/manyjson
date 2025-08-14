@@ -241,18 +241,34 @@ export const useAppStore = defineStore('app', () => {
           logInfo('Electron API listConfigFiles result', { success: result.success, fileCount: result.files?.length })
           
           if (result.success && result.files) {
-            const loadedSchemas: SchemaInfo[] = result.files.map(file => ({
-              name: file.name,
-              path: file.path,
-              content: file.content,
-              associatedFiles: []
-            }))
+            const loadedSchemas: SchemaInfo[] = []
+            
+            // Load each schema and its associated JSON files
+            for (const file of result.files) {
+              const schemaInfo: SchemaInfo = {
+                name: file.name,
+                path: file.path,
+                content: file.content,
+                associatedFiles: []
+              }
+              
+              // Load associated JSON files for this schema
+              const associatedFiles = await loadSchemaJsonFiles(file.name)
+              schemaInfo.associatedFiles = associatedFiles
+              
+              loadedSchemas.push(schemaInfo)
+            }
             
             schemas.value = loadedSchemas
-            await loadJsonFiles()
+            
+            // Also load any additional associations from the old system
             await loadSchemaAssociations()
-            logInfo('Schemas loaded from config directory', { count: loadedSchemas.length })
-            showStatus(`Loaded ${loadedSchemas.length} schemas from config directory`, 'success')
+            
+            logInfo('Schemas and associated files loaded from config directory', { 
+              schemaCount: loadedSchemas.length,
+              totalJsonFiles: loadedSchemas.reduce((sum, s) => sum + s.associatedFiles.length, 0)
+            })
+            showStatus(`Loaded ${loadedSchemas.length} schemas with associated JSON files`, 'success')
             return
           } else {
             logError('Failed to load from config directory', { error: result.error })
@@ -413,6 +429,98 @@ export const useAppStore = defineStore('app', () => {
       logError('Unexpected error in saveJsonFile', error)
       showStatus('Failed to save file', 'error')
       return false
+    }
+  }
+
+  async function saveSchemaJsonFile(schemaName: string, fileName: string, content: string): Promise<{ success: boolean; filePath?: string }> {
+    logInfo('saveSchemaJsonFile called', { schemaName, fileName, contentLength: content.length })
+    
+    try {
+      if (window.electronAPI) {
+        logInfo('Using Electron API to save schema JSON file')
+        
+        try {
+          const result = await window.electronAPI.writeSchemaJsonFile(schemaName, fileName, content)
+          logInfo('Electron API writeSchemaJsonFile result', result)
+          
+          if (result.success) {
+            logInfo('Schema JSON file saved successfully via Electron API')
+            showStatus('JSON file saved successfully', 'success')
+            return { success: true, filePath: result.filePath }
+          } else {
+            logError('Electron API returned failure for saveSchemaJsonFile', { error: result.error })
+            showStatus(`Failed to save JSON file: ${result.error}`, 'error')
+            return { success: false }
+          }
+        } catch (electronError) {
+          logError('Exception during Electron API writeSchemaJsonFile call', electronError)
+          showStatus(`Error saving JSON file: ${electronError}`, 'error')
+          return { success: false }
+        }
+      } else {
+        // Fallback for web mode
+        logInfo('Electron API not available, using fallback for saveSchemaJsonFile')
+        showStatus('JSON file saved (mock)', 'success')
+        return { success: true, filePath: `mock://${schemaName}/${fileName}` }
+      }
+    } catch (error) {
+      logError('Unexpected error in saveSchemaJsonFile', error)
+      showStatus('Failed to save JSON file', 'error')
+      return { success: false }
+    }
+  }
+
+  async function loadSchemaJsonFiles(schemaName: string): Promise<JsonFile[]> {
+    logInfo('loadSchemaJsonFiles called', { schemaName })
+    
+    try {
+      if (window.electronAPI) {
+        logInfo('Using Electron API to load schema JSON files')
+        
+        try {
+          const result = await window.electronAPI.listSchemaJsonFiles(schemaName)
+          logInfo('Electron API listSchemaJsonFiles result', { success: result.success, fileCount: result.files?.length })
+          
+          if (result.success && result.files) {
+            const jsonFiles: JsonFile[] = result.files.map(file => {
+              // Validate each file against the current schema if available
+              const currentSchemaObj = schemas.value.find(s => s.name === schemaName)
+              let isValid = true
+              let errors: any[] = []
+              
+              if (currentSchemaObj) {
+                const validation = validateJsonWithSchema(file.content, currentSchemaObj.content)
+                isValid = validation.isValid
+                errors = validation.errors
+              }
+              
+              return {
+                name: file.name,
+                path: file.path,
+                content: file.content,
+                isValid,
+                errors
+              }
+            })
+            
+            logInfo('Schema JSON files loaded successfully', { schemaName, count: jsonFiles.length })
+            return jsonFiles
+          } else {
+            logError('Failed to load schema JSON files', { schemaName, error: result.error })
+            return []
+          }
+        } catch (electronError) {
+          logError('Exception during Electron API listSchemaJsonFiles call', electronError)
+          return []
+        }
+      } else {
+        // Fallback for web mode
+        logInfo('Electron API not available, using fallback for loadSchemaJsonFiles')
+        return []
+      }
+    } catch (error) {
+      logError('Unexpected error in loadSchemaJsonFiles', error)
+      return []
     }
   }
 
@@ -741,6 +849,8 @@ export const useAppStore = defineStore('app', () => {
     loadSchemaAssociations,
     loadJsonFiles,
     saveJsonFile,
+    saveSchemaJsonFile,
+    loadSchemaJsonFiles,
     saveSchema,
     deleteSchema,
     deleteJsonFile,

@@ -28,7 +28,7 @@
                 class="action-btn primary" 
                 @click="saveJsonFile"
                 :disabled="false"
-                :title="`Debug: fileName='${fileName.value}', trim='${fileName.value?.trim()}', disabled=${!fileName.value?.trim()}`"
+                :title="getButtonTooltip()"
               >
                 <SaveIcon />
               </button>
@@ -159,9 +159,6 @@ async function saveJsonFile() {
     // Ensure .json extension
     const fullFileName = fileName.value.endsWith('.json') ? fileName.value : `${fileName.value}.json`
     
-    // Create mock path for the new file
-    const mockPath = `new://${fullFileName}`
-    
     // Check if file name already exists in this schema
     if (schema.value.associatedFiles.some(f => f.name === fullFileName)) {
       appStore.showStatus('A file with this name already exists', 'error')
@@ -171,10 +168,28 @@ async function saveJsonFile() {
     // Validate against schema
     const validation = appStore.validateJsonWithSchema(parsedContent, schema.value.content)
     
-    // Create new JsonFile object
+    // Save the JSON file to schema-specific directory
+    let actualFilePath: string
+    try {
+      // Use the new structured file saving system
+      const saveResult = await appStore.saveSchemaJsonFile(schema.value.name, fullFileName, editContent.value)
+      
+      if (!saveResult.success) {
+        appStore.showStatus(`Failed to save JSON file: ${saveResult.error || 'Unknown error'}`, 'error')
+        return
+      }
+      
+      actualFilePath = saveResult.filePath || `structured://${schema.value.name}/${fullFileName}`
+      appStore.showStatus(`JSON file saved to structured location`, 'success')
+    } catch (error) {
+      appStore.showStatus(`Failed to save JSON file: ${error}`, 'error')
+      return
+    }
+    
+    // Create new JsonFile object with actual file path
     const newJsonFile = {
       name: fullFileName,
-      path: mockPath,
+      path: actualFilePath,
       content: parsedContent,
       isValid: validation.isValid,
       errors: validation.errors
@@ -184,7 +199,7 @@ async function saveJsonFile() {
     schema.value.associatedFiles.push(newJsonFile)
     
     // Add to global jsonFiles array
-    const existingFileIndex = appStore.jsonFiles.findIndex(f => f.path === mockPath)
+    const existingFileIndex = appStore.jsonFiles.findIndex(f => f.path === actualFilePath)
     if (existingFileIndex === -1) {
       appStore.jsonFiles.push(newJsonFile)
     } else {
