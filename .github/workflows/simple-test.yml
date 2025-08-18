@@ -1,0 +1,43 @@
+name: Simple Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Simple Test Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: List test files
+        run: |
+          echo "Test directory structure:"
+          find test -name "*.test.ts" -type f
+          echo "Source directory structure:"
+          find src -name "*.ts" -type f | head -10
+
+      - name: Check test setup
+        run: |
+          echo "Checking if test setup file exists:"
+          ls -la test/setup.ts || echo "Setup file not found"
+          
+      - name: Run basic test
+        run: npm test -- --run --reporter=verbose
+
+      - name: Build check
+        run: npm run build

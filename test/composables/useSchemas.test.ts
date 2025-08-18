@@ -3,17 +3,17 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useSchemas } from '../../src/composables/useSchemas'
 
 // Mock the services
-vi.mock('../../src/services', () => ({
-  schemaService: {
-    createSchema: vi.fn(),
-    loadSchemas: vi.fn(),
-    deleteSchema: vi.fn(),
-    loadSchemaAssociations: vi.fn(),
-    saveSchemaAssociations: vi.fn()
-  }
-}))
+const mockSchemaService = {
+  createSchema: vi.fn(),
+  loadSchemas: vi.fn(),
+  deleteSchema: vi.fn(),
+  loadSchemaAssociations: vi.fn(),
+  saveSchemaAssociations: vi.fn()
+}
 
-import { schemaService } from '../../src/services'
+vi.mock('../../src/services', () => ({
+  schemaService: mockSchemaService
+}))
 
 describe('useSchemas', () => {
   beforeEach(() => {
@@ -30,7 +30,7 @@ describe('useSchemas', () => {
         associatedFiles: []
       }
 
-      vi.mocked(schemaService.createSchema).mockResolvedValue({
+      mockSchemaService.createSchema.mockResolvedValue({
         success: true,
         schema: mockSchema
       })
@@ -40,11 +40,11 @@ describe('useSchemas', () => {
 
       expect(result).toBe(true)
       expect(schemas.value).toContain(mockSchema)
-      expect(schemaService.createSchema).toHaveBeenCalledWith('test-schema', { type: 'object' })
+      expect(mockSchemaService.createSchema).toHaveBeenCalledWith('test-schema', { type: 'object' })
     })
 
     it('should handle schema creation failure', async () => {
-      vi.mocked(schemaService.createSchema).mockResolvedValue({
+      mockSchemaService.createSchema.mockResolvedValue({
         success: false,
         error: 'Invalid schema'
       })
@@ -74,19 +74,19 @@ describe('useSchemas', () => {
         }
       ]
 
-      vi.mocked(schemaService.loadSchemas).mockResolvedValue(mockSchemas)
-      vi.mocked(schemaService.loadSchemaAssociations).mockResolvedValue(undefined)
+      mockSchemaService.loadSchemas.mockResolvedValue(mockSchemas)
+      mockSchemaService.loadSchemaAssociations.mockResolvedValue(undefined)
 
       const { loadSchemas, schemas } = useSchemas()
       await loadSchemas()
 
       expect(schemas.value).toEqual(mockSchemas)
-      expect(schemaService.loadSchemas).toHaveBeenCalled()
-      expect(schemaService.loadSchemaAssociations).toHaveBeenCalledWith(mockSchemas)
+      expect(mockSchemaService.loadSchemas).toHaveBeenCalled()
+      expect(mockSchemaService.loadSchemaAssociations).toHaveBeenCalledWith(mockSchemas)
     })
 
     it('should handle load schemas failure', async () => {
-      vi.mocked(schemaService.loadSchemas).mockRejectedValue(new Error('Load failed'))
+      mockSchemaService.loadSchemas.mockRejectedValue(new Error('Load failed'))
 
       const { loadSchemas, schemas } = useSchemas()
       await loadSchemas()
@@ -104,7 +104,7 @@ describe('useSchemas', () => {
         associatedFiles: []
       }
 
-      vi.mocked(schemaService.deleteSchema).mockResolvedValue({
+      mockSchemaService.deleteSchema.mockResolvedValue({
         success: true
       })
 
@@ -119,7 +119,7 @@ describe('useSchemas', () => {
       expect(result).toBe(true)
       expect(schemas.value).not.toContain(mockSchema)
       expect(currentSchema.value).toBeNull()
-      expect(schemaService.deleteSchema).toHaveBeenCalledWith(mockSchema)
+      expect(mockSchemaService.deleteSchema).toHaveBeenCalledWith(mockSchema)
     })
 
     it('should handle delete schema failure', async () => {
@@ -130,7 +130,7 @@ describe('useSchemas', () => {
         associatedFiles: []
       }
 
-      vi.mocked(schemaService.deleteSchema).mockResolvedValue({
+      mockSchemaService.deleteSchema.mockResolvedValue({
         success: false,
         error: 'Permission denied'
       })
@@ -170,16 +170,16 @@ describe('useSchemas', () => {
 
   describe('saveSchemaAssociations', () => {
     it('should save schema associations successfully', async () => {
-      vi.mocked(schemaService.saveSchemaAssociations).mockResolvedValue(undefined)
+      mockSchemaService.saveSchemaAssociations.mockResolvedValue(undefined)
 
       const { saveSchemaAssociations } = useSchemas()
       await saveSchemaAssociations()
 
-      expect(schemaService.saveSchemaAssociations).toHaveBeenCalled()
+      expect(mockSchemaService.saveSchemaAssociations).toHaveBeenCalled()
     })
 
     it('should handle save associations failure', async () => {
-      vi.mocked(schemaService.saveSchemaAssociations).mockRejectedValue(new Error('Save failed'))
+      mockSchemaService.saveSchemaAssociations.mockRejectedValue(new Error('Save failed'))
 
       const { saveSchemaAssociations } = useSchemas()
       await saveSchemaAssociations()

@@ -19,7 +19,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["node"],
+    "types": ["node", "vitest/globals"],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true
@@ -28,7 +28,8 @@
     "env.d.ts",
     "src/**/*",
     "src/**/*.vue",
-    "electron/**/*"
+    "electron/**/*",
+    "test/**/*"
   ],
   "exclude": [
     "src/**/__tests__/*",
