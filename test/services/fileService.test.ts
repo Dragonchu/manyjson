@@ -25,6 +25,13 @@ describe('FileService', () => {
   beforeEach(() => {
     fileService = new FileService()
     vi.clearAllMocks()
+    
+    // Reset window.electronAPI mock
+    Object.defineProperty(window, 'electronAPI', {
+      value: mockElectronAPI,
+      writable: true,
+      configurable: true,
+    })
   })
 
   describe('writeConfigFile', () => {
@@ -54,6 +61,8 @@ describe('FileService', () => {
     })
 
     it('should fallback to mock mode when electronAPI not available', async () => {
+      // Temporarily remove electronAPI
+      const originalElectronAPI = window.electronAPI
       // @ts-ignore
       delete window.electronAPI
 
@@ -61,6 +70,13 @@ describe('FileService', () => {
 
       expect(result.success).toBe(true)
       expect(result.filePath).toBe('mock://config/test.json')
+      
+      // Restore electronAPI
+      Object.defineProperty(window, 'electronAPI', {
+        value: originalElectronAPI,
+        writable: true,
+        configurable: true,
+      })
     })
   })
 

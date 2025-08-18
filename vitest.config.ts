@@ -38,7 +38,7 @@ export default defineConfig({
       'test/**/*.{test,spec}.{js,ts}'
     ],
     // Setup files
-    setupFiles: ['test/setup.ts']
+    setupFiles: ['./test/setup.ts']
   },
   resolve: {
     alias: {

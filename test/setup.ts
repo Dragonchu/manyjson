@@ -26,14 +26,21 @@ Object.defineProperty(window, 'electronAPI', {
 })
 
 // Global test utilities
+declare global {
+  var mockElectronAPI: typeof mockElectronAPI
+}
+
+// @ts-ignore
 global.mockElectronAPI = mockElectronAPI
 
-// Mock console methods to reduce noise in tests
-global.console = {
-  ...console,
-  log: vi.fn(),
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+// Mock console methods to reduce noise in tests (only in test environment)
+if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+  global.console = {
+    ...console,
+    log: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }
 }
