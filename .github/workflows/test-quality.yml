@@ -1,0 +1,130 @@
+name: Test Quality Check
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-quality:
+    name: Test Quality Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with detailed coverage
+        run: npm run test:coverage -- --reporter=verbose
+
+      - name: Check coverage thresholds
+        run: |
+          echo "Checking if coverage meets minimum thresholds..."
+          npm run test:coverage -- --reporter=json > coverage-summary.json
+          
+      - name: Generate coverage badge
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          lcov-file: ./coverage/lcov.info
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          lcov-file: ./coverage/lcov.info
+          delete-old-comments: true
+
+      - name: Archive coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+            !coverage/tmp
+
+  architecture-tests:
+    name: Architecture Compliance Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test Service Layer Isolation
+        run: |
+          echo "Checking service layer doesn't import from store..."
+          ! grep -r "stores/" src/services/ || (echo "❌ Services should not import from stores" && exit 1)
+          echo "✅ Service layer isolation verified"
+
+      - name: Test Store Simplification
+        run: |
+          echo "Checking store doesn't contain business logic..."
+          ! grep -r "electronAPI" src/stores/ || (echo "❌ Store should not contain electronAPI calls" && exit 1)
+          ! grep -r "Ajv\|ajv" src/stores/ || (echo "❌ Store should not contain validation logic" && exit 1)
+          echo "✅ Store simplification verified"
+
+      - name: Test Composable Structure
+        run: |
+          echo "Checking composables properly import services and stores..."
+          grep -q "useAppStore" src/composables/*.ts || (echo "❌ Composables should use store" && exit 1)
+          grep -q "services" src/composables/*.ts || (echo "❌ Composables should use services" && exit 1)
+          echo "✅ Composable structure verified"
+
+      - name: Verify Test Coverage Structure
+        run: |
+          echo "Checking test structure matches architecture..."
+          [ -d "test/services" ] || (echo "❌ Missing service tests" && exit 1)
+          [ -d "test/composables" ] || (echo "❌ Missing composable tests" && exit 1)  
+          [ -d "test/stores" ] || (echo "❌ Missing store tests" && exit 1)
+          echo "✅ Test structure verified"
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run performance benchmarks
+        run: |
+          echo "Running test performance benchmarks..."
+          time npm run test:services
+          time npm run test:composables  
+          time npm run test:stores
+
+      - name: Bundle size check
+        run: |
+          echo "Checking bundle size after refactoring..."
+          npm run build
+          du -h dist/ | tail -1

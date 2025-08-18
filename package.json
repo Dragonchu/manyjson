@@ -13,7 +13,13 @@
     "electron:build": "npm run build && electron-builder",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "clean": "rm -rf node_modules dist dist-electron out release"
+    "test:coverage": "vitest --coverage",
+    "test:services": "vitest test/services",
+    "test:composables": "vitest test/composables",
+    "test:stores": "vitest test/stores",
+    "test:watch": "vitest --watch",
+    "test:run": "vitest run",
+    "clean": "rm -rf node_modules dist dist-electron out release coverage"
   },
   "build": {
     "appId": "com.manyjson.app",

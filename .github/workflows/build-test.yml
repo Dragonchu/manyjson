@@ -1,4 +1,4 @@
-name: Build Test
+name: Build and Test
 
 on:
   push:
@@ -7,12 +7,12 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test-build:
-    name: Test Build on ${{ matrix.os }}
+  test:
+    name: Run Tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - name: Checkout code
@@ -27,13 +27,60 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      - name: Run unit tests (Services)
+        run: npm test -- test/services
 
-      - name: Build application
+      - name: Run integration tests (Composables)
+        run: npm test -- test/composables
+
+      - name: Run store tests
+        run: npm test -- test/stores
+
+      - name: Run all tests with coverage
+        run: npm test -- --coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+  build:
+    name: Build Application on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vue application
         run: npm run build
 
       - name: Test Electron build (without packaging)
         run: npm run electron:build -- --publish=never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: dist-files
+          path: |
+            dist/
+            dist-electron/
