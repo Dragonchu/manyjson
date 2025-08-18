@@ -26,8 +26,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAppStore, type SchemaInfo, type JsonFile } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
 
 const appStore = useAppStore()
+const ui = useUIStore()
 const contextMenuRef = ref<HTMLElement>()
 const isVisible = ref(false)
 const position = ref({ x: 0, y: 0 })
@@ -99,7 +101,7 @@ function handleViewFile() {
 function handleEditFile() {
   if (currentFile.value) {
     appStore.setCurrentJsonFile(currentFile.value)
-    appStore.setEditMode(true)
+    ui.setEditMode(true)
     appStore.showStatus(`Editing file: ${currentFile.value.name}`, 'info')
   }
   hideContextMenu()

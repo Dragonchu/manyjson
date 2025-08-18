@@ -2,19 +2,19 @@
   <div 
     class="status-bar" 
     :class="{ 
-      show: appStore.statusMessage, 
-      success: appStore.statusType === 'success',
-      error: appStore.statusType === 'error'
+      show: ui.statusMessage, 
+      success: ui.statusType === 'success',
+      error: ui.statusType === 'error'
     }"
   >
-    {{ appStore.statusMessage }}
+    {{ ui.statusMessage }}
   </div>
 </template>
 
 <script setup lang="ts">
-import { useAppStore } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
 
-const appStore = useAppStore()
+const ui = useUIStore()
 </script>
 
 <style scoped>
