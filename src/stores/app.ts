@@ -423,6 +423,41 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function renameJsonFile(file: JsonFile, newPath: string): Promise<boolean> {
+    logInfo('renameJsonFile called', { oldName: file.name, oldPath: file.path, newPath })
+    try {
+      // Derive new name from path
+      const newName = newPath.split('/').pop() || newPath
+
+      // Update global list
+      const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+      if (fileIndex !== -1) {
+        jsonFiles.value[fileIndex] = { ...jsonFiles.value[fileIndex], name: newName, path: newPath }
+      }
+
+      // Update schema association
+      for (const schema of schemas.value) {
+        const associatedFileIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+        if (associatedFileIndex !== -1) {
+          schema.associatedFiles[associatedFileIndex] = { ...schema.associatedFiles[associatedFileIndex], name: newName, path: newPath }
+          break
+        }
+      }
+
+      // Update current selection if needed
+      if (currentJsonFile.value && currentJsonFile.value.path === file.path) {
+        currentJsonFile.value = { ...currentJsonFile.value, name: newName, path: newPath }
+      }
+
+      // Persist associations change
+      await saveSchemaAssociations()
+      return true
+    } catch (error) {
+      logError('Unexpected error in renameJsonFile', error)
+      return false
+    }
+  }
+
   async function saveSchemaAssociations(): Promise<void> {
     try {
       if (window.electronAPI && typeof window.electronAPI.writeConfigFile === 'function') {
@@ -563,6 +598,7 @@ export const useAppStore = defineStore('app', () => {
     saveSchema,
     deleteSchema,
     deleteJsonFile,
+    renameJsonFile,
     saveSchemaAssociations
   }
 })

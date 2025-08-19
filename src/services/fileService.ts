@@ -94,5 +94,18 @@ export class FileService {
     }
     return { success: true, files: [] }
   }
+
+  async renameFile(oldPath: string, newPath: string): Promise<WriteResult> {
+    if (window.electronAPI?.renameFile) {
+      try {
+        const result = await window.electronAPI.renameFile(oldPath, newPath)
+        return result
+      } catch (error: any) {
+        return { success: false, error: String(error) }
+      }
+    }
+    // Web mode fallback: pretend success
+    return { success: true, filePath: newPath }
+  }
 }
 
