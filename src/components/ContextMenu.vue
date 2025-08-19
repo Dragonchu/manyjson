@@ -29,11 +29,9 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAppStore, type SchemaInfo, type JsonFile } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
-import { FileService } from '@/services/fileService'
 
 const appStore = useAppStore()
 const ui = useUIStore()
-const fileService = new FileService()
 const contextMenuRef = ref<HTMLElement>()
 const isVisible = ref(false)
 const position = ref({ x: 0, y: 0 })
@@ -123,41 +121,18 @@ async function handleDeleteFile() {
   hideContextMenu()
 }
 
-async function handleRenameFile() {
+function handleRenameFile() {
   if (!currentFile.value) {
     hideContextMenu()
     return
   }
 
-  try {
-    const oldPath = currentFile.value.path
-    const defaultPath = oldPath
-    // Use Electron native save dialog to get new filename in the same folder
-    const result = await window.electronAPI?.showSaveDialog?.({
-      title: 'Rename JSON File',
-      defaultPath,
-      showsTagField: false,
-      filters: [{ name: 'JSON', extensions: ['json'] }]
-    })
-
-    if (!result || result.canceled || !result.filePath) {
-      hideContextMenu()
-      return
-    }
-
-    const newPath = result.filePath.endsWith('.json') ? result.filePath : `${result.filePath}.json`
-    const rename = await fileService.renameFile(oldPath, newPath)
-    if (!rename.success || !rename.filePath) {
-      ui.showStatus(`Failed to rename file: ${rename.error || 'Unknown error'}`, 'error')
-      hideContextMenu()
-      return
-    }
-
-    await appStore.renameJsonFile(currentFile.value, rename.filePath)
-    ui.showStatus('File renamed successfully', 'success')
-  } catch (error: any) {
-    ui.showStatus(`Failed to rename file: ${String(error)}`, 'error')
-  }
+  // Trigger inline rename in the MiddlePanel component
+  const renameEvent = new CustomEvent('trigger-inline-rename', {
+    detail: { file: currentFile.value }
+  })
+  document.dispatchEvent(renameEvent)
+  
   hideContextMenu()
 }
 

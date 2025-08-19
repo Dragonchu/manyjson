@@ -27,12 +27,37 @@
         class="json-file-card"
         :class="{ 
           selected: appStore.currentJsonFile?.path === file.path,
-          invalid: !file.isValid 
+          invalid: !file.isValid,
+          editing: inlineRename.isEditing(file)
         }"
+        :data-file-path="file.path"
         @click="selectFile(file)"
         @contextmenu.prevent="showContextMenu($event, file)"
+        @dblclick="startInlineRename(file)"
       >
-        <div class="json-file-name">{{ file.name }}</div>
+        <!-- Normal display mode -->
+        <div v-if="!inlineRename.isEditing(file)" class="json-file-name" :title="`${file.name}\n\nDouble-click or press F2 to rename`">
+          {{ file.name }}
+        </div>
+        
+        <!-- Inline edit mode -->
+        <div v-else class="json-file-name-edit">
+          <input
+            type="text"
+            class="inline-rename-input"
+            :class="{ 'invalid-input': !inlineRename.isValidName.value }"
+            :value="inlineRename.editingName.value"
+            @input="inlineRename.updateEditingName(($event.target as HTMLInputElement).value)"
+            @keydown.enter="handleRenameConfirm"
+            @keydown.escape="inlineRename.cancelRename()"
+            @blur="handleRenameBlur"
+            @click.stop
+          />
+          <div v-if="!inlineRename.isValidName.value" class="validation-error">
+            {{ inlineRename.validationError.value }}
+          </div>
+        </div>
+        
         <div class="json-file-status">
           <div 
             class="status-icon" 
@@ -60,17 +85,32 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { useAppStore, type JsonFile } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
+import { useInlineRename } from '@/composables/useInlineRename'
 
 const appStore = useAppStore()
 const ui = useUIStore()
+const inlineRename = useInlineRename()
+
+// Track if we're confirming via Enter key
+let isConfirming = false
 
 function selectFile(file: JsonFile) {
+  // Don't select if we're editing this file
+  if (inlineRename.isEditing(file)) {
+    return
+  }
   appStore.setCurrentJsonFile(file)
 }
 
 function showContextMenu(event: MouseEvent, file: JsonFile) {
+  // Don't show context menu if we're editing
+  if (inlineRename.isEditing(file)) {
+    return
+  }
+  
   // Context menu functionality will be handled by ContextMenu component
   const contextMenuEvent = new CustomEvent('show-context-menu', {
     detail: { event, file, type: 'file' }
@@ -90,6 +130,60 @@ function openAddFilePopup() {
   })
   document.dispatchEvent(event)
 }
+
+function startInlineRename(file: JsonFile) {
+  // Don't start rename if already editing
+  if (inlineRename.editingFile.value) {
+    return
+  }
+  inlineRename.startRename(file)
+}
+
+async function handleRenameConfirm() {
+  isConfirming = true
+  await inlineRename.confirmRename()
+  isConfirming = false
+}
+
+function handleRenameBlur() {
+  // Don't cancel if we're confirming via Enter key
+  if (isConfirming) {
+    return
+  }
+  
+  // Small delay to allow click events on other elements to fire first
+  setTimeout(() => {
+    if (inlineRename.editingFile.value) {
+      inlineRename.confirmRename()
+    }
+  }, 200)
+}
+
+// Handle global rename trigger event
+function handleRenameEvent(event: CustomEvent) {
+  const { file } = event.detail
+  if (file) {
+    startInlineRename(file)
+  }
+}
+
+// Handle F2 key for rename
+function handleKeyDown(event: KeyboardEvent) {
+  if (event.key === 'F2' && appStore.currentJsonFile && !inlineRename.editingFile.value) {
+    event.preventDefault()
+    startInlineRename(appStore.currentJsonFile)
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('trigger-inline-rename', handleRenameEvent as EventListener)
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('trigger-inline-rename', handleRenameEvent as EventListener)
+  document.removeEventListener('keydown', handleKeyDown)
+})
 </script>
 
 <style scoped>
@@ -188,6 +282,9 @@ function openAddFilePopup() {
   font-weight: 500;
   color: var(--linear-text-primary);
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .json-file-status {
@@ -195,5 +292,68 @@ function openAddFilePopup() {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Inline rename styles */
+.json-file-card.editing {
+  background: var(--linear-surface-active);
+  border-color: var(--linear-accent);
+  box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.1);
+}
+
+.json-file-name-edit {
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.inline-rename-input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--linear-text-primary);
+  background: var(--linear-bg-primary);
+  border: 2px solid var(--linear-accent);
+  border-radius: 4px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.inline-rename-input:focus {
+  border-color: var(--linear-accent);
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+}
+
+.inline-rename-input.invalid-input {
+  border-color: var(--linear-error);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.inline-rename-input.invalid-input:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.validation-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: var(--linear-error);
+  color: white;
+  font-size: 11px;
+  border-radius: 4px;
+  z-index: 10;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Ensure the card has enough space for validation error */
+.json-file-card.editing {
+  margin-bottom: 32px;
 }
 </style>
