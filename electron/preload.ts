@@ -40,6 +40,10 @@ const electronAPI = {
   showSaveDialog: (options: any): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('show-save-dialog', options),
 
+  // 重命名文件
+  renameFile: (oldPath: string, newPath: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke('rename-file', oldPath, newPath),
+
   // Schema JSON file operations
   createSchemaJsonDirectory: (schemaName: string): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('create-schema-json-directory', schemaName),

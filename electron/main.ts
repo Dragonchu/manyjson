@@ -5,7 +5,7 @@
 */
 
 import { app, BrowserWindow, nativeTheme, ipcMain, dialog } from 'electron'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { promises as fs } from 'fs'
 import { constants } from 'fs'
 
@@ -364,6 +364,47 @@ ipcMain.handle('delete-file', async (event, filePath: string) => {
       code: (error as any)?.code,
       errno: (error as any)?.errno
     })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// Rename a file (JSON)
+ipcMain.handle('rename-file', async (event, oldPath: string, newPath: string) => {
+  logInfo('rename-file requested', { oldPath, newPath })
+
+  try {
+    if (!oldPath || !newPath) {
+      return { success: false, error: 'Both oldPath and newPath are required' }
+    }
+
+    // Ensure paths are not identical
+    if (oldPath === newPath) {
+      logInfo('rename-file skipped: paths are identical')
+      return { success: true, filePath: newPath }
+    }
+
+    // Ensure same directory (security/UX: true rename not move)
+    const oldDir = dirname(oldPath)
+    const newDir = dirname(newPath)
+    if (oldDir !== newDir) {
+      logError('rename-file denied: directory changed', { oldDir, newDir })
+      return { success: false, error: 'Renaming must stay within the original folder' }
+    }
+
+    // Prevent overwrite if target exists
+    try {
+      await fs.access(newPath, constants.F_OK)
+      logError('rename-file denied: target already exists', { newPath })
+      return { success: false, error: 'A file with the new name already exists' }
+    } catch {
+      // Target does not exist, proceed
+    }
+
+    await fs.rename(oldPath, newPath)
+    logInfo('File renamed successfully', { from: oldPath, to: newPath })
+    return { success: true, filePath: newPath }
+  } catch (error) {
+    logError('Failed to rename file', { oldPath, newPath, error })
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })
