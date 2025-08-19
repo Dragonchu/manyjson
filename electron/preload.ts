@@ -20,6 +20,10 @@ const electronAPI = {
   deleteFile: (filePath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('delete-file', filePath),
 
+  // 重命名文件
+  renameFile: (filePath: string, newFileName: string): Promise<{ success: boolean; newPath?: string; newName?: string; error?: string }> =>
+    ipcRenderer.invoke('rename-file', filePath, newFileName),
+
   // 获取配置目录
   getConfigDirectory: (): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('get-config-directory'),

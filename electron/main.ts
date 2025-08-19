@@ -5,7 +5,7 @@
 */
 
 import { app, BrowserWindow, nativeTheme, ipcMain, dialog } from 'electron'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { promises as fs } from 'fs'
 import { constants } from 'fs'
 
@@ -364,6 +364,47 @@ ipcMain.handle('delete-file', async (event, filePath: string) => {
       code: (error as any)?.code,
       errno: (error as any)?.errno
     })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// Rename a file within the same directory
+ipcMain.handle('rename-file', async (event, filePath: string, newFileName: string) => {
+  logInfo('rename-file requested', { filePath, newFileName })
+
+  try {
+    // Validate new filename
+    const validation = validateFilename(newFileName)
+    if (!validation.isValid) {
+      logError('Invalid new filename provided for rename', { newFileName, error: validation.error })
+      return { success: false, error: validation.error }
+    }
+
+    // Ensure .json extension is preserved/added
+    const safeFileName = newFileName.endsWith('.json') ? newFileName : `${newFileName}.json`
+
+    // Source must exist
+    await fs.access(filePath, constants.F_OK)
+
+    // Determine target path (same directory)
+    const directory = dirname(filePath)
+    const targetPath = join(directory, safeFileName)
+
+    // If target already exists, abort
+    try {
+      await fs.access(targetPath, constants.F_OK)
+      logError('Target file already exists for rename', { targetPath })
+      return { success: false, error: 'A file with the target name already exists' }
+    } catch {
+      // OK: target does not exist
+    }
+
+    // Perform atomic rename
+    await fs.rename(filePath, targetPath)
+    logInfo('File renamed successfully', { from: filePath, to: targetPath })
+    return { success: true, newPath: targetPath, newName: safeFileName }
+  } catch (error) {
+    logError('Failed to rename file', { filePath, newFileName, error })
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 })

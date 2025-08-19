@@ -18,6 +18,8 @@
       <div class="context-menu-item" @click="handleViewFile">View File</div>
       <div class="context-menu-item" @click="handleEditFile">Edit File</div>
       <div class="context-menu-separator"></div>
+      <div class="context-menu-item" @click="handleRenameFile">Rename File</div>
+      <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleDeleteFile">Delete File</div>
     </template>
   </div>
@@ -115,6 +117,23 @@ async function handleDeleteFile() {
     if (confirmed) {
       await appStore.deleteJsonFile(currentFile.value)
     }
+  }
+  hideContextMenu()
+}
+
+async function handleRenameFile() {
+  if (!currentFile.value) return
+  const oldName = currentFile.value.name
+  const input = prompt('Enter new file name', oldName)
+  if (!input || input.trim() === '' || input === oldName) {
+    hideContextMenu()
+    return
+  }
+  const success = await appStore.renameJsonFile(currentFile.value, input.trim())
+  if (success) {
+    ui.showStatus(`Renamed to: ${input.trim()}`, 'success')
+  } else {
+    ui.showStatus('Rename failed', 'error')
   }
   hideContextMenu()
 }

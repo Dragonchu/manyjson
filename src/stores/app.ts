@@ -423,6 +423,62 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function renameJsonFile(file: JsonFile, newName: string): Promise<boolean> {
+    logInfo('renameJsonFile called', { oldName: file.name, newName, filePath: file.path })
+    try {
+      if (window.electronAPI?.renameFile) {
+        const result = await window.electronAPI.renameFile(file.path, newName)
+        if (result.success && result.newPath && result.newName) {
+          // Update in global jsonFiles list
+          const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+          if (fileIndex !== -1) {
+            jsonFiles.value[fileIndex].name = result.newName
+            jsonFiles.value[fileIndex].path = result.newPath
+          }
+          // Update within associated schema
+          for (const schema of schemas.value) {
+            const assocIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+            if (assocIndex !== -1) {
+              schema.associatedFiles[assocIndex].name = result.newName
+              schema.associatedFiles[assocIndex].path = result.newPath
+              break
+            }
+          }
+          // Update current selection if needed
+          if (currentJsonFile.value && currentJsonFile.value.path === file.path) {
+            currentJsonFile.value.name = result.newName
+            currentJsonFile.value.path = result.newPath
+          }
+          await saveSchemaAssociations()
+          return true
+        }
+        return false
+      } else {
+        // Web fallback: mutate in-memory only
+        const safeNewName = newName.endsWith('.json') ? newName : `${newName}.json`
+        const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+        if (fileIndex !== -1) {
+          jsonFiles.value[fileIndex].name = safeNewName
+        }
+        for (const schema of schemas.value) {
+          const assocIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+          if (assocIndex !== -1) {
+            schema.associatedFiles[assocIndex].name = safeNewName
+            break
+          }
+        }
+        if (currentJsonFile.value && currentJsonFile.value.path === file.path) {
+          currentJsonFile.value.name = safeNewName
+        }
+        await saveSchemaAssociations()
+        return true
+      }
+    } catch (error) {
+      logError('Unexpected error in renameJsonFile', error)
+      return false
+    }
+  }
+
   async function saveSchemaAssociations(): Promise<void> {
     try {
       if (window.electronAPI && typeof window.electronAPI.writeConfigFile === 'function') {
@@ -563,6 +619,7 @@ export const useAppStore = defineStore('app', () => {
     saveSchema,
     deleteSchema,
     deleteJsonFile,
+    renameJsonFile,
     saveSchemaAssociations
   }
 })
