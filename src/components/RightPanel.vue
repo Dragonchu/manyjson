@@ -3,9 +3,9 @@
     <div class="right-panel-header">
       <div class="right-panel-title">
         {{ 
-          appStore.isEditingSchema && appStore.currentSchema 
+          ui.isEditingSchema && appStore.currentSchema 
             ? `Editing Schema: ${appStore.currentSchema.name}` 
-            : appStore.isViewingSchema && appStore.currentSchema 
+            : ui.isViewingSchema && appStore.currentSchema 
               ? `Schema: ${appStore.currentSchema.name}` 
               : appStore.currentJsonFile 
                 ? appStore.currentJsonFile.name 
@@ -13,11 +13,11 @@
         }}
       </div>
       <div class="right-panel-controls">
-        <div class="validation-status" v-if="appStore.isEditingSchema && appStore.currentSchema">
+        <div class="validation-status" v-if="ui.isEditingSchema && appStore.currentSchema">
           <div class="status-icon editing"></div>
           <span class="status-editing">Editing Schema</span>
         </div>
-        <div class="validation-status" v-else-if="appStore.isViewingSchema && appStore.currentSchema">
+        <div class="validation-status" v-else-if="ui.isViewingSchema && appStore.currentSchema">
           <div class="status-icon schema"></div>
           <span class="status-schema">Schema Definition</span>
         </div>
@@ -30,7 +30,7 @@
             {{ appStore.currentJsonFile.isValid ? 'Valid JSON' : `${appStore.currentJsonFile.errors.length} validation errors` }}
           </span>
         </div>
-        <div class="panel-actions" v-if="appStore.isEditingSchema && appStore.currentSchema">
+        <div class="panel-actions" v-if="ui.isEditingSchema && appStore.currentSchema">
           <button class="action-btn primary" @click="saveSchemaChanges" title="Save Schema">
             <SaveIcon />
           </button>
@@ -38,7 +38,7 @@
             <CancelIcon />
           </button>
         </div>
-        <div class="panel-actions" v-else-if="appStore.isViewingSchema && appStore.currentSchema">
+        <div class="panel-actions" v-else-if="ui.isViewingSchema && appStore.currentSchema">
           <button class="action-btn" @click="copySchemaToClipboard" title="Copy Schema">
             <CopyIcon />
           </button>
@@ -47,13 +47,13 @@
           <button class="action-btn" @click="copyToClipboard" title="Copy JSON">
             <CopyIcon />
           </button>
-          <button class="action-btn" @click="toggleEditMode" title="Edit JSON" v-if="!appStore.isEditMode">
+          <button class="action-btn" @click="toggleEditMode" title="Edit JSON" v-if="!ui.isEditMode">
             <EditIcon />
           </button>
-          <button class="action-btn primary" @click="saveChanges" title="Save Changes" v-if="appStore.isEditMode">
+          <button class="action-btn primary" @click="saveChanges" title="Save Changes" v-if="ui.isEditMode">
             <SaveIcon />
           </button>
-          <button class="action-btn" @click="cancelEdit" title="Cancel Edit" v-if="appStore.isEditMode">
+          <button class="action-btn" @click="cancelEdit" title="Cancel Edit" v-if="ui.isEditMode">
             <CancelIcon />
           </button>
         </div>
@@ -62,7 +62,7 @@
     <div class="json-content">
       <!-- Schema Editor -->
       <textarea 
-        v-if="appStore.isEditingSchema && appStore.currentSchema"
+        v-if="ui.isEditingSchema && appStore.currentSchema"
         v-model="editSchemaContent"
         class="json-editor schema-editor"
         spellcheck="false"
@@ -71,7 +71,7 @@
       ></textarea>
 
       <!-- Schema Viewer -->
-      <div v-else-if="appStore.isViewingSchema && appStore.currentSchema" class="json-viewer">
+      <div v-else-if="ui.isViewingSchema && appStore.currentSchema" class="json-viewer">
         <div class="schema-info-banner">
           <strong>Viewing Schema: {{ appStore.currentSchema.name }}</strong>
         </div>
@@ -79,7 +79,7 @@
       </div>
 
       <!-- Validation Errors Display -->
-      <div v-else-if="appStore.currentJsonFile && !appStore.currentJsonFile.isValid && !appStore.isEditMode" class="validation-errors">
+      <div v-else-if="appStore.currentJsonFile && !appStore.currentJsonFile.isValid && !ui.isEditMode" class="validation-errors">
         <div class="validation-errors-header">
           <div class="validation-errors-header-left">
             <span>⚠️</span>
@@ -101,13 +101,13 @@
       </div>
 
       <!-- JSON Viewer -->
-      <div v-else-if="appStore.currentJsonFile && !appStore.isEditMode" class="json-viewer">
+      <div v-else-if="appStore.currentJsonFile && !ui.isEditMode" class="json-viewer">
         <JsonHighlight :json="appStore.currentJsonFile.content" />
       </div>
 
       <!-- JSON Editor -->
       <textarea 
-        v-else-if="appStore.currentJsonFile && appStore.isEditMode"
+        v-else-if="appStore.currentJsonFile && ui.isEditMode"
         v-model="editContent"
         class="json-editor"
         spellcheck="false"
@@ -129,6 +129,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
+import { ValidationService } from '@/services/validationService'
+import { FileService } from '@/services/fileService'
 import JsonHighlight from './JsonHighlight.vue'
 import CopyIcon from './icons/CopyIcon.vue'
 import EditIcon from './icons/EditIcon.vue'
@@ -136,6 +139,9 @@ import SaveIcon from './icons/SaveIcon.vue'
 import CancelIcon from './icons/CancelIcon.vue'
 
 const appStore = useAppStore()
+const ui = useUIStore()
+const validationService = new ValidationService()
+const fileService = new FileService()
 const editContent = ref('')
 const editErrors = ref<any[]>([])
 const editSchemaContent = ref('')
@@ -143,20 +149,20 @@ const editSchemaErrors = ref<any[]>([])
 
 // Watch for changes in current JSON file
 watch(() => appStore.currentJsonFile, (newFile) => {
-  if (newFile && appStore.isEditMode) {
+  if (newFile && ui.isEditMode) {
     editContent.value = JSON.stringify(newFile.content, null, 2)
   }
 }, { immediate: true })
 
 // Watch for changes in current schema when entering edit mode
 watch(() => appStore.currentSchema, (newSchema) => {
-  if (newSchema && appStore.isEditingSchema) {
+  if (newSchema && ui.isEditingSchema) {
     editSchemaContent.value = JSON.stringify(newSchema.content, null, 2)
   }
 }, { immediate: true })
 
 // Watch for schema edit mode changes
-watch(() => appStore.isEditingSchema, (isEditing) => {
+watch(() => ui.isEditingSchema, (isEditing) => {
   if (isEditing && appStore.currentSchema) {
     editSchemaContent.value = JSON.stringify(appStore.currentSchema.content, null, 2)
   }
@@ -164,13 +170,13 @@ watch(() => appStore.isEditingSchema, (isEditing) => {
 
 function toggleEditMode() {
   if (appStore.currentJsonFile) {
-    appStore.setEditMode(true)
+    ui.setEditMode(true)
     editContent.value = JSON.stringify(appStore.currentJsonFile.content, null, 2)
   }
 }
 
 function cancelEdit() {
-  appStore.setEditMode(false)
+  ui.setEditMode(false)
   editContent.value = ''
   editErrors.value = []
 }
@@ -184,25 +190,28 @@ async function saveChanges() {
     
     // Validate against schema if available
     if (appStore.currentSchema) {
-      const validation = appStore.validateJsonWithSchema(parsedContent, appStore.currentSchema.content)
+      const validation = validationService.validateJson(parsedContent, appStore.currentSchema.content)
       if (!validation.isValid) {
-        appStore.showStatus(`JSON is invalid: ${validation.errors.length} errors`, 'error')
+        ui.showStatus(`JSON is invalid: ${validation.errors.length} errors`, 'error')
         return
       }
     }
 
     // Save the file
-    const success = await appStore.saveJsonFile(appStore.currentJsonFile.path, editContent.value)
+    const result = await fileService.writeJsonFile(appStore.currentJsonFile.path, editContent.value)
+    const success = result.success
     
     if (success) {
       // Update the current file content
       appStore.currentJsonFile.content = parsedContent
       appStore.currentJsonFile.isValid = true
       appStore.currentJsonFile.errors = []
-      appStore.setEditMode(false)
+      ui.setEditMode(false)
+    } else {
+      ui.showStatus(`Failed to save file: ${result.error || 'Unknown error'}`, 'error')
     }
   } catch (error) {
-    appStore.showStatus('Invalid JSON syntax', 'error')
+    ui.showStatus('Invalid JSON syntax', 'error')
   }
 }
 
@@ -211,7 +220,7 @@ function validateEditContent() {
     const parsedContent = JSON.parse(editContent.value)
     
     if (appStore.currentSchema) {
-      const validation = appStore.validateJsonWithSchema(parsedContent, appStore.currentSchema.content)
+      const validation = validationService.validateJson(parsedContent, appStore.currentSchema.content)
       editErrors.value = validation.errors
     } else {
       editErrors.value = []
@@ -222,7 +231,7 @@ function validateEditContent() {
 }
 
 function cancelSchemaEdit() {
-  appStore.setSchemaEditMode(false)
+  ui.setSchemaEditMode(false)
   editSchemaContent.value = ''
   editSchemaErrors.value = []
 }
@@ -234,31 +243,20 @@ async function saveSchemaChanges() {
     // Parse and validate JSON syntax
     const parsedContent = JSON.parse(editSchemaContent.value)
     
-    // TODO: Add schema validation here if needed
-    // For now, we'll just validate that it's valid JSON
-    
     // Save the schema
-    const success = await appStore.saveSchema(appStore.currentSchema.path, editSchemaContent.value)
-    
-    if (success) {
+    const result = await fileService.writeJsonFile(appStore.currentSchema.path, editSchemaContent.value)
+    if (result.success) {
       // Update the current schema content
       appStore.currentSchema.content = parsedContent
-      appStore.setSchemaEditMode(false)
+      ui.setSchemaEditMode(false)
       
       // Reload schemas to refresh the UI
       await appStore.loadSchemas()
+    } else {
+      ui.showStatus(`Failed to save schema: ${result.error || 'Unknown error'}`, 'error')
     }
   } catch (error) {
-    appStore.showStatus('Invalid JSON syntax', 'error')
-  }
-}
-
-function validateSchemaEditContent() {
-  try {
-    JSON.parse(editSchemaContent.value)
-    editSchemaErrors.value = []
-  } catch (error) {
-    editSchemaErrors.value = [{ message: 'Invalid JSON syntax' }]
+    ui.showStatus('Invalid JSON syntax', 'error')
   }
 }
 
@@ -268,9 +266,9 @@ async function copyToClipboard() {
   try {
     const content = JSON.stringify(appStore.currentJsonFile.content, null, 2)
     await navigator.clipboard.writeText(content)
-    appStore.showStatus('JSON copied to clipboard', 'success')
+    ui.showStatus('JSON copied to clipboard', 'success')
   } catch (error) {
-    appStore.showStatus('Failed to copy to clipboard', 'error')
+    ui.showStatus('Failed to copy to clipboard', 'error')
   }
 }
 
@@ -280,9 +278,9 @@ async function copySchemaToClipboard() {
   try {
     const content = JSON.stringify(appStore.currentSchema.content, null, 2)
     await navigator.clipboard.writeText(content)
-    appStore.showStatus('Schema copied to clipboard', 'success')
+    ui.showStatus('Schema copied to clipboard', 'success')
   } catch (error) {
-    appStore.showStatus('Failed to copy schema to clipboard', 'error')
+    ui.showStatus('Failed to copy schema to clipboard', 'error')
   }
 }
 </script>

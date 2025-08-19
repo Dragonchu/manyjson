@@ -96,17 +96,21 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
+import { ValidationService } from '@/services/validationService'
+import { FileService } from '@/services/fileService'
 import SaveIcon from './icons/SaveIcon.vue'
 import CancelIcon from './icons/CancelIcon.vue'
 
 const appStore = useAppStore()
+const ui = useUIStore()
+const validationService = new ValidationService()
+const fileName = ref('')
 const isVisible = ref(false)
 const schema = ref<SchemaInfo | null>(null)
 const editContent = ref('{}')
 const editErrors = ref<any[]>([])
-const fileName = ref('')
-
-
+const fileService = new FileService()
 
 function getButtonTooltip() {
   if (!fileName.value?.trim()) {
@@ -146,11 +150,9 @@ function closePopup() {
 
 async function saveJsonFile() {
   if (!schema.value || !fileName.value?.trim()) {
-    appStore.showStatus('Please enter a file name', 'error')
+    ui.showStatus('Please enter a file name', 'error')
     return
   }
-
-
 
   try {
     // Parse JSON to validate
@@ -161,28 +163,28 @@ async function saveJsonFile() {
     
     // Check if file name already exists in this schema
     if (schema.value.associatedFiles.some(f => f.name === fullFileName)) {
-      appStore.showStatus('A file with this name already exists', 'error')
+      ui.showStatus('A file with this name already exists', 'error')
       return
     }
     
     // Validate against schema
-    const validation = appStore.validateJsonWithSchema(parsedContent, schema.value.content)
+    const validation = validationService.validateJson(parsedContent, schema.value.content)
     
     // Save the JSON file to schema-specific directory
     let actualFilePath: string
     try {
       // Use the new structured file saving system
-      const saveResult = await appStore.saveSchemaJsonFile(schema.value.name, fullFileName, editContent.value)
+      const saveResult = await fileService.writeSchemaJsonFile(schema.value.name, fullFileName, editContent.value)
       
       if (!saveResult.success) {
-        appStore.showStatus(`Failed to save JSON file: ${saveResult.error || 'Unknown error'}`, 'error')
+        ui.showStatus(`Failed to save JSON file: ${saveResult.error || 'Unknown error'}`, 'error')
         return
       }
       
       actualFilePath = saveResult.filePath || `structured://${schema.value.name}/${fullFileName}`
-      appStore.showStatus(`JSON file saved to structured location`, 'success')
+      ui.showStatus(`JSON file saved to structured location`, 'success')
     } catch (error) {
-      appStore.showStatus(`Failed to save JSON file: ${error}`, 'error')
+      ui.showStatus(`Failed to save JSON file: ${error}`, 'error')
       return
     }
     
@@ -209,11 +211,11 @@ async function saveJsonFile() {
     // Save the updated schema associations to persistence
     await appStore.saveSchemaAssociations()
     
-    appStore.showStatus(`File "${fullFileName}" created successfully${validation.isValid ? '' : ' (with validation errors)'}`, 'success')
+    ui.showStatus(`File "${fullFileName}" created successfully${validation.isValid ? '' : ' (with validation errors)'}`, 'success')
     
     closePopup()
   } catch (error) {
-    appStore.showStatus('Invalid JSON syntax', 'error')
+    ui.showStatus('Invalid JSON syntax', 'error')
   }
 }
 
@@ -222,7 +224,7 @@ function validateEditContent() {
     const parsedContent = JSON.parse(editContent.value)
     
     if (schema.value) {
-      const validation = appStore.validateJsonWithSchema(parsedContent, schema.value.content)
+      const validation = validationService.validateJson(parsedContent, schema.value.content)
       editErrors.value = validation.errors
     } else {
       editErrors.value = []

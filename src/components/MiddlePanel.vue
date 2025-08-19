@@ -61,8 +61,10 @@
 
 <script setup lang="ts">
 import { useAppStore, type JsonFile } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
 
 const appStore = useAppStore()
+const ui = useUIStore()
 
 function selectFile(file: JsonFile) {
   appStore.setCurrentJsonFile(file)
@@ -78,7 +80,7 @@ function showContextMenu(event: MouseEvent, file: JsonFile) {
 
 function openAddFilePopup() {
   if (!appStore.currentSchema) {
-    appStore.showStatus('Please select a schema first', 'error')
+    ui.showStatus('Please select a schema first', 'error')
     return
   }
 

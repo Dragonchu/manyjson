@@ -26,8 +26,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAppStore, type SchemaInfo, type JsonFile } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
 
 const appStore = useAppStore()
+const ui = useUIStore()
 const contextMenuRef = ref<HTMLElement>()
 const isVisible = ref(false)
 const position = ref({ x: 0, y: 0 })
@@ -61,8 +63,8 @@ function hideContextMenu() {
 function handleViewSchema() {
   if (currentSchema.value) {
     appStore.setCurrentSchema(currentSchema.value)
-    appStore.setSchemaViewMode(true)
-    appStore.showStatus(`Viewing schema: ${currentSchema.value.name}`, 'info')
+    ui.setSchemaViewMode(true)
+    ui.showStatus(`Viewing schema: ${currentSchema.value.name}`, 'info')
   }
   hideContextMenu()
 }
@@ -70,8 +72,8 @@ function handleViewSchema() {
 function handleEditSchema() {
   if (currentSchema.value) {
     appStore.setCurrentSchema(currentSchema.value)
-    appStore.setSchemaEditMode(true)
-    appStore.showStatus(`Editing schema: ${currentSchema.value.name}`, 'info')
+    ui.setSchemaEditMode(true)
+    ui.showStatus(`Editing schema: ${currentSchema.value.name}`, 'info')
   }
   hideContextMenu()
 }
@@ -91,7 +93,7 @@ async function handleDeleteSchema() {
 function handleViewFile() {
   if (currentFile.value) {
     appStore.setCurrentJsonFile(currentFile.value)
-    appStore.showStatus(`Viewing file: ${currentFile.value.name}`, 'info')
+    ui.showStatus(`Viewing file: ${currentFile.value.name}`, 'info')
   }
   hideContextMenu()
 }
@@ -99,8 +101,8 @@ function handleViewFile() {
 function handleEditFile() {
   if (currentFile.value) {
     appStore.setCurrentJsonFile(currentFile.value)
-    appStore.setEditMode(true)
-    appStore.showStatus(`Editing file: ${currentFile.value.name}`, 'info')
+    ui.setEditMode(true)
+    ui.showStatus(`Editing file: ${currentFile.value.name}`, 'info')
   }
   hideContextMenu()
 }

@@ -60,8 +60,12 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
+import { useSchemaManager } from '@/composables/useSchemaManager'
 
 const appStore = useAppStore()
+const ui = useUIStore()
+const manager = useSchemaManager()
 
 const isVisible = ref(false)
 const schemaName = ref('')
@@ -286,11 +290,11 @@ async function handleSubmit() {
     // Check if electronAPI is available
     if (!window.electronAPI) {
       logError('electronAPI is not available - running in web mode')
-      appStore.showStatus('Running in web mode - schemas will not be saved permanently', 'info')
+      ui.showStatus('Running in web mode - schemas will not be saved permanently', 'info')
     }
-    
-    const success = await appStore.addSchema(schemaName.value, parsedContent.value)
-    logInfo('appStore.addSchema completed', { success })
+
+    const success = await manager.addSchema(schemaName.value, parsedContent.value)
+    logInfo('manager.addSchema completed', { success })
     
     if (success) {
       logInfo('Schema creation successful, closing dialog')
@@ -314,7 +318,7 @@ async function handleSubmit() {
       contentLength: schemaContentText.value.length
     })
     
-    appStore.showStatus(`Failed to create schema: ${errorMessage}`, 'error')
+    ui.showStatus(`Failed to create schema: ${errorMessage}`, 'error')
   } finally {
     isSubmitting.value = false
     logInfo('Form submission completed')
