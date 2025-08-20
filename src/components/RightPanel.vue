@@ -61,14 +61,12 @@
     </div>
     <div class="json-content">
       <!-- Schema Editor -->
-      <textarea 
+      <AdvancedJsonEditor
         v-if="ui.isEditingSchema && appStore.currentSchema"
         v-model="editSchemaContent"
-        class="json-editor schema-editor"
-        spellcheck="false"
-        @input="validateSchemaEditContent"
         placeholder="Enter schema JSON..."
-      ></textarea>
+        @validation-change="handleSchemaValidationChange"
+      />
 
       <!-- Schema Viewer -->
       <div v-else-if="ui.isViewingSchema && appStore.currentSchema" class="json-viewer">
@@ -106,13 +104,13 @@
       </div>
 
       <!-- JSON Editor -->
-      <textarea 
+      <AdvancedJsonEditor
         v-else-if="appStore.currentJsonFile && ui.isEditMode"
         v-model="editContent"
-        class="json-editor"
-        spellcheck="false"
-        @input="validateEditContent"
-      ></textarea>
+        :schema="appStore.currentSchema?.content"
+        placeholder="Enter JSON content..."
+        @validation-change="handleValidationChange"
+      />
 
       <!-- Empty State -->
       <div v-else class="json-viewer">
@@ -133,6 +131,7 @@ import { useUIStore } from '@/stores/ui'
 import { ValidationService } from '@/services/validationService'
 import { FileService } from '@/services/fileService'
 import JsonHighlight from './JsonHighlight.vue'
+import AdvancedJsonEditor from './AdvancedJsonEditor.vue'
 import CopyIcon from './icons/CopyIcon.vue'
 import EditIcon from './icons/EditIcon.vue'
 import SaveIcon from './icons/SaveIcon.vue'
@@ -228,6 +227,15 @@ function validateEditContent() {
   } catch (error) {
     editErrors.value = [{ message: 'Invalid JSON syntax' }]
   }
+}
+
+// Handle validation changes from the advanced editor
+function handleValidationChange(errors: any[]) {
+  editErrors.value = errors
+}
+
+function handleSchemaValidationChange(errors: any[]) {
+  editSchemaErrors.value = errors
 }
 
 function cancelSchemaEdit() {

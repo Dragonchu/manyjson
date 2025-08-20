@@ -58,13 +58,12 @@
 
         <!-- JSON Editor -->
         <div class="json-content">
-          <textarea 
+          <AdvancedJsonEditor
             v-model="editContent"
-            class="json-editor"
-            spellcheck="false"
-            @input="validateEditContent"
+            :schema="schema?.content"
             placeholder="Enter JSON content..."
-          ></textarea>
+            @validation-change="handleValidationChange"
+          />
           
           <!-- Validation Errors Display -->
           <div v-if="editErrors.length > 0" class="validation-errors">
@@ -99,6 +98,7 @@ import { useAppStore, type SchemaInfo } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import { ValidationService } from '@/services/validationService'
 import { FileService } from '@/services/fileService'
+import AdvancedJsonEditor from './AdvancedJsonEditor.vue'
 import SaveIcon from './icons/SaveIcon.vue'
 import CancelIcon from './icons/CancelIcon.vue'
 
@@ -232,6 +232,11 @@ function validateEditContent() {
   } catch (error) {
     editErrors.value = [{ message: 'Invalid JSON syntax' }]
   }
+}
+
+// Handle validation changes from the advanced editor
+function handleValidationChange(errors: any[]) {
+  editErrors.value = errors
 }
 
 function handleGlobalEvent(event: CustomEvent) {
