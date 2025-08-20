@@ -15,6 +15,8 @@
     
     <!-- File context menu items -->
     <template v-if="contextType === 'file'">
+      <div class="context-menu-item" @click="handleCopyFile">Copy File</div>
+      <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleViewFile">View File</div>
       <div class="context-menu-item" @click="handleEditFile">Edit File</div>
       <div class="context-menu-separator"></div>

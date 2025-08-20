@@ -409,6 +409,58 @@ ipcMain.handle('rename-file', async (event, oldPath: string, newPath: string) =>
   }
 })
 
+// Copy a file (JSON)
+ipcMain.handle('copy-file', async (event, filePath: string, newPath: string) => {
+  logInfo('copy-file requested', { filePath, newPath })
+
+  try {
+    if (!filePath || !newPath) {
+      return { success: false, error: 'Both filePath and newPath are required' }
+    }
+
+    // Check if source file exists
+    try {
+      await fs.access(filePath, constants.F_OK | constants.R_OK)
+    } catch {
+      logError('copy-file denied: source file not accessible', { filePath })
+      return { success: false, error: 'Source file does not exist or is not readable' }
+    }
+
+    // Ensure paths are not identical
+    if (filePath === newPath) {
+      logError('copy-file denied: paths are identical')
+      return { success: false, error: 'Cannot copy file to the same location' }
+    }
+
+    // Ensure same directory (for consistency with rename)
+    const sourceDir = dirname(filePath)
+    const targetDir = dirname(newPath)
+    if (sourceDir !== targetDir) {
+      logError('copy-file denied: directory changed', { sourceDir, targetDir })
+      return { success: false, error: 'Copying must stay within the original folder' }
+    }
+
+    // Prevent overwrite if target exists
+    try {
+      await fs.access(newPath, constants.F_OK)
+      logError('copy-file denied: target already exists', { newPath })
+      return { success: false, error: 'A file with the target name already exists' }
+    } catch {
+      // Target does not exist, proceed
+    }
+
+    // Read and write the file to create a copy
+    const content = await fs.readFile(filePath, 'utf8')
+    await fs.writeFile(newPath, content, 'utf8')
+    
+    logInfo('File copied successfully', { from: filePath, to: newPath })
+    return { success: true, filePath: newPath }
+  } catch (error) {
+    logError('Failed to copy file', { filePath, newPath, error })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
 // Create JSON file directory for a schema
 ipcMain.handle('create-schema-json-directory', async (event, schemaName: string) => {
   logInfo('create-schema-json-directory requested', { schemaName })
