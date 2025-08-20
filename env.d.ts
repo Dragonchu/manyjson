@@ -17,6 +17,7 @@ interface Window {
     showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
     showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath?: string }>
     renameFile?: (oldPath: string, newPath: string) => Promise<{ success: boolean; filePath?: string; error?: string }>
+    copyFile?: (filePath: string, newPath: string) => Promise<{ success: boolean; filePath?: string; error?: string }>
     // Structured JSON file storage APIs
     writeSchemaJsonFile?: (schemaName: string, fileName: string, content: string) => Promise<{ success: boolean; filePath?: string; error?: string }>
     listSchemaJsonFiles?: (schemaName: string) => Promise<{ success: boolean; files?: Array<{ name: string; path: string; content: any }>; error?: string }>
