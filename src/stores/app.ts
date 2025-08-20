@@ -459,6 +459,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function copyJsonFile(file: JsonFile): Promise<boolean> {
+    console.log('copyJsonFile called', { fileName: file.name, filePath: file.path })
     logInfo('copyJsonFile called', { fileName: file.name, filePath: file.path })
     try {
       // Generate new path with "-复制" suffix
@@ -473,8 +474,11 @@ export const useAppStore = defineStore('app', () => {
       const baseName = nameParts.join('.')
       const newName = `${baseName}-复制.${nameExtension}`
 
+      console.log('Checking electronAPI availability:', !!window.electronAPI?.copyFile)
       if (window.electronAPI?.copyFile) {
+        console.log('Using Electron API to copy file')
         const result = await window.electronAPI.copyFile(file.path, newPath)
+        console.log('Electron copy result:', result)
         if (result.success && result.filePath) {
           // Create new file object
           const newFile: JsonFile = {
@@ -506,6 +510,7 @@ export const useAppStore = defineStore('app', () => {
           return false
         }
       } else {
+        console.log('Using web mode fallback for copy')
         // Web mode fallback
         const newFile: JsonFile = {
           name: newName,

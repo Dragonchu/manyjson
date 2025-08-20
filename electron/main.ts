@@ -411,6 +411,7 @@ ipcMain.handle('rename-file', async (event, oldPath: string, newPath: string) =>
 
 // Copy a file (JSON)
 ipcMain.handle('copy-file', async (_event, filePath: string, newPath: string) => {
+  console.log('IPC copy-file requested', { filePath, newPath })
   logInfo('copy-file requested', { filePath, newPath })
 
   try {

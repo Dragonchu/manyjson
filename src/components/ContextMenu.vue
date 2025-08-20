@@ -124,13 +124,23 @@ async function handleDeleteFile() {
 }
 
 async function handleCopyFile() {
+  console.log('handleCopyFile called', { currentFile: currentFile.value })
   if (currentFile.value) {
-    const success = await appStore.copyJsonFile(currentFile.value)
-    if (success) {
-      ui.showStatus(`File copied: ${currentFile.value.name}`, 'success')
-    } else {
-      ui.showStatus(`Failed to copy file: ${currentFile.value.name}`, 'error')
+    console.log('Attempting to copy file:', currentFile.value.name)
+    try {
+      const success = await appStore.copyJsonFile(currentFile.value)
+      console.log('Copy result:', success)
+      if (success) {
+        ui.showStatus(`File copied: ${currentFile.value.name}`, 'success')
+      } else {
+        ui.showStatus(`Failed to copy file: ${currentFile.value.name}`, 'error')
+      }
+    } catch (error) {
+      console.error('Error during copy:', error)
+      ui.showStatus(`Error copying file: ${error}`, 'error')
     }
+  } else {
+    console.log('No current file selected')
   }
   hideContextMenu()
 }
