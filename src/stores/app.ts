@@ -458,6 +458,86 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function copyJsonFile(file: JsonFile): Promise<boolean> {
+    console.log('copyJsonFile called', { fileName: file.name, filePath: file.path })
+    logInfo('copyJsonFile called', { fileName: file.name, filePath: file.path })
+    try {
+      // Generate new path with "-复制" suffix
+      const pathParts = file.path.split('.')
+      const extension = pathParts.pop() || 'json'
+      const basePath = pathParts.join('.')
+      const newPath = `${basePath}-复制.${extension}`
+      
+      // Generate new name with "-复制" suffix
+      const nameParts = file.name.split('.')
+      const nameExtension = nameParts.pop() || 'json'
+      const baseName = nameParts.join('.')
+      const newName = `${baseName}-复制.${nameExtension}`
+
+      console.log('Checking electronAPI availability:', !!window.electronAPI?.copyFile)
+      if (window.electronAPI?.copyFile) {
+        console.log('Using Electron API to copy file')
+        const result = await window.electronAPI.copyFile(file.path, newPath)
+        console.log('Electron copy result:', result)
+        if (result.success && result.filePath) {
+          // Create new file object
+          const newFile: JsonFile = {
+            name: newName,
+            path: result.filePath,
+            content: file.content,
+            isValid: file.isValid,
+            errors: file.errors
+          }
+          
+          // Add to jsonFiles array
+          jsonFiles.value.push(newFile)
+          
+          // Add to current schema's associated files if applicable
+          if (currentSchema.value) {
+            const schemaIndex = schemas.value.findIndex(s => s.path === currentSchema.value!.path)
+            if (schemaIndex !== -1) {
+              schemas.value[schemaIndex].associatedFiles.push(newFile)
+            }
+          }
+          
+          // Save associations
+          await saveSchemaAssociations()
+          
+          logInfo('File copied successfully', { from: file.path, to: result.filePath })
+          return true
+        } else {
+          logError('Failed to copy file', result.error)
+          return false
+        }
+      } else {
+        console.log('Using web mode fallback for copy')
+        // Web mode fallback
+        const newFile: JsonFile = {
+          name: newName,
+          path: newPath,
+          content: file.content,
+          isValid: file.isValid,
+          errors: file.errors
+        }
+        
+        jsonFiles.value.push(newFile)
+        
+        if (currentSchema.value) {
+          const schemaIndex = schemas.value.findIndex(s => s.path === currentSchema.value!.path)
+          if (schemaIndex !== -1) {
+            schemas.value[schemaIndex].associatedFiles.push(newFile)
+          }
+        }
+        
+        await saveSchemaAssociations()
+        return true
+      }
+    } catch (error) {
+      logError('Unexpected error in copyJsonFile', error)
+      return false
+    }
+  }
+
   async function saveSchemaAssociations(): Promise<void> {
     try {
       if (window.electronAPI && typeof window.electronAPI.writeConfigFile === 'function') {
@@ -599,6 +679,7 @@ export const useAppStore = defineStore('app', () => {
     deleteSchema,
     deleteJsonFile,
     renameJsonFile,
+    copyJsonFile,
     saveSchemaAssociations
   }
 })

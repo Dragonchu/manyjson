@@ -44,6 +44,10 @@ const electronAPI = {
   renameFile: (oldPath: string, newPath: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
     ipcRenderer.invoke('rename-file', oldPath, newPath),
 
+  // 复制文件
+  copyFile: (filePath: string, newPath: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke('copy-file', filePath, newPath),
+
   // Schema JSON file operations
   createSchemaJsonDirectory: (schemaName: string): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke('create-schema-json-directory', schemaName),
