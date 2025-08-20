@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { basicSetup } from 'codemirror'
-import { EditorView, keymap } from '@codemirror/view'
+import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { EditorState } from '@codemirror/state'
 import { json } from '@codemirror/lang-json'
 import { linter, lintGutter } from '@codemirror/lint'
@@ -148,7 +148,7 @@ const initEditor = async () => {
         }
       }),
       EditorState.readOnly.of(props.readonly),
-      EditorView.placeholder(props.placeholder)
+      placeholder(props.placeholder)
     ]
   })
   
@@ -193,7 +193,7 @@ watch(() => props.readonly, (readonly) => {
           }
         }),
         EditorState.readOnly.of(readonly),
-        EditorView.placeholder(props.placeholder)
+        placeholder(props.placeholder)
       ])
     })
   }
