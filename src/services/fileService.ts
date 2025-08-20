@@ -107,5 +107,18 @@ export class FileService {
     // Web mode fallback: pretend success
     return { success: true, filePath: newPath }
   }
+
+  async copyFile(filePath: string, newPath: string): Promise<WriteResult> {
+    if (window.electronAPI?.copyFile) {
+      try {
+        const result = await window.electronAPI.copyFile(filePath, newPath)
+        return result
+      } catch (error: any) {
+        return { success: false, error: String(error) }
+      }
+    }
+    // Web mode fallback: pretend success
+    return { success: true, filePath: newPath }
+  }
 }
 

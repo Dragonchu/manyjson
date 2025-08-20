@@ -15,6 +15,8 @@
     
     <!-- File context menu items -->
     <template v-if="contextType === 'file'">
+      <div class="context-menu-item" @click="handleCopyFile">Copy File</div>
+      <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleViewFile">View File</div>
       <div class="context-menu-item" @click="handleEditFile">Edit File</div>
       <div class="context-menu-separator"></div>
@@ -116,6 +118,18 @@ async function handleDeleteFile() {
     
     if (confirmed) {
       await appStore.deleteJsonFile(currentFile.value)
+    }
+  }
+  hideContextMenu()
+}
+
+async function handleCopyFile() {
+  if (currentFile.value) {
+    const success = await appStore.copyJsonFile(currentFile.value)
+    if (success) {
+      ui.showStatus(`File copied: ${currentFile.value.name}`, 'success')
+    } else {
+      ui.showStatus(`Failed to copy file: ${currentFile.value.name}`, 'error')
     }
   }
   hideContextMenu()
