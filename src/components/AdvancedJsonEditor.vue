@@ -96,7 +96,6 @@ const initEditor = async () => {
       async: false
     },
     readOnly: props.readonly,
-    placeholder: props.placeholder,
     indentUnit: 2,
     tabSize: 2,
     indentWithTabs: false,
@@ -121,8 +120,14 @@ const initEditor = async () => {
     }
   })
   
+  // Handle placeholder
+  if (props.placeholder && !props.modelValue) {
+    editor.setValue(props.placeholder)
+    editor.getWrapperElement().classList.add('placeholder-active')
+  }
+  
   // Apply custom styling
-  applyCustomTheme()
+  // applyCustomTheme()
 }
 
 // Apply custom theme to match the original design
@@ -139,11 +144,19 @@ const applyCustomTheme = () => {
   
   // Add focus styles
   editor.on('focus', () => {
+    if (editor && editor.getValue() === props.placeholder) {
+      editor.setValue('')
+      wrapper.classList.remove('placeholder-active')
+    }
     wrapper.style.borderColor = 'var(--linear-accent)'
     wrapper.style.boxShadow = '0 0 0 2px rgba(99, 102, 241, 0.1)'
   })
   
   editor.on('blur', () => {
+    if (editor && !editor.getValue() && props.placeholder) {
+      editor.setValue(props.placeholder)
+      wrapper.classList.add('placeholder-active')
+    }
     wrapper.style.borderColor = 'var(--linear-border)'
     wrapper.style.boxShadow = 'none'
   })
@@ -208,7 +221,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (editor) {
-    editor.toTextArea()
     editor = null
   }
 })
@@ -231,6 +243,27 @@ onUnmounted(() => {
   height: 100%;
   color: var(--linear-text-primary);
   background-color: var(--linear-bg-primary);
+}
+
+/* CodeMirror JSON syntax highlighting to match JsonHighlight.vue */
+:deep(.cm-property) {
+  color: #8b5cf6; /* JSON key color - matches JsonHighlight.vue */
+}
+
+:deep(.cm-string) {
+  color: #10b981; /* JSON string color - matches JsonHighlight.vue */
+}
+
+:deep(.cm-number) {
+  color: #f59e0b; /* JSON number color - matches JsonHighlight.vue */
+}
+
+:deep(.cm-atom) {
+  color: #ef4444; /* JSON boolean color - matches JsonHighlight.vue */
+}
+
+:deep(.cm-keyword) {
+  color: #6b7280; /* JSON null color - matches JsonHighlight.vue */
 }
 
 :deep(.CodeMirror-scroll) {
@@ -282,5 +315,9 @@ onUnmounted(() => {
   border-radius: 4px;
   color: var(--linear-text-primary);
   padding: 4px 8px;
+}
+
+:deep(.placeholder-active .CodeMirror) {
+  color: var(--linear-text-tertiary);
 }
 </style>
