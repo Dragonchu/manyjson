@@ -7,10 +7,12 @@
 <script setup lang="ts">
 import { defaultKeymap, indentWithTab } from '@codemirror/commands'
 import { json } from '@codemirror/lang-json'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { linter, lintGutter } from '@codemirror/lint'
 import { searchKeymap } from '@codemirror/search'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
+import { tags } from '@lezer/highlight'
 import { basicSetup } from 'codemirror'
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
@@ -44,8 +46,8 @@ const createJsonLinter = () => {
     
     // First, check JSON syntax
     try {
-      const parsed = JSON.parse(doc)
-      
+      JSON.parse(doc)
+
       // If we have a schema, validate against it
       if (props.schema) {
         // Basic schema validation would go here
@@ -69,6 +71,26 @@ const createJsonLinter = () => {
     
     return diagnostics
   })
+}
+
+// Create syntax highlighting style
+const createSyntaxHighlighting = () => {
+  try {
+    return HighlightStyle.define([
+      { tag: tags.string, color: '#10b981' },     // Green for strings
+      { tag: tags.number, color: '#f59e0b' },     // Orange for numbers
+      { tag: tags.bool, color: '#ef4444' },        // Red for booleans
+      { tag: tags.null, color: '#6b7280' },        // Gray for null
+      { tag: tags.propertyName, color: '#8b5cf6' }, // Purple for keys
+      { tag: tags.punctuation, color: 'var(--linear-text-primary)' }, // White for punctuation
+      { tag: tags.brace, color: 'var(--linear-text-primary)' },     // White for braces
+      { tag: tags.bracket, color: 'var(--linear-text-primary)' },   // White for brackets
+      { tag: tags.separator, color: 'var(--linear-text-primary)' }   // White for separators
+    ])
+  } catch (error) {
+    console.warn('Failed to create syntax highlighting:', error)
+    return HighlightStyle.define([]) // Return empty HighlightStyle as fallback
+  }
 }
 
 // Create the editor theme
@@ -127,7 +149,7 @@ const createTheme = () => {
 // Initialize the editor
 const initEditor = async () => {
   if (!editorRef.value) return
-  
+
   const state = EditorState.create({
     doc: props.modelValue,
     extensions: [
@@ -136,6 +158,7 @@ const initEditor = async () => {
       createJsonLinter(),
       lintGutter(),
       createTheme(),
+      syntaxHighlighting(createSyntaxHighlighting()), // Add syntax highlighting
       keymap.of([
         ...defaultKeymap,
         ...searchKeymap,
@@ -146,12 +169,14 @@ const initEditor = async () => {
           const newValue = update.state.doc.toString()
           emit('update:modelValue', newValue)
         }
+
+
       }),
       EditorState.readOnly.of(props.readonly),
       placeholder(props.placeholder)
     ]
   })
-  
+
   editorView = new EditorView({
     state,
     parent: editorRef.value
@@ -174,13 +199,15 @@ watch(() => props.modelValue, (newValue) => {
 // Update readonly state
 watch(() => props.readonly, (readonly) => {
   if (editorView) {
-    editorView.dispatch({
-      effects: EditorState.reconfigure.of([
+    const newState = EditorState.create({
+      doc: editorView.state.doc,
+      extensions: [
         basicSetup,
         json(),
         createJsonLinter(),
         lintGutter(),
         createTheme(),
+        syntaxHighlighting(createSyntaxHighlighting()), // Add syntax highlighting
         keymap.of([
           ...defaultKeymap,
           ...searchKeymap,
@@ -194,8 +221,9 @@ watch(() => props.readonly, (readonly) => {
         }),
         EditorState.readOnly.of(readonly),
         placeholder(props.placeholder)
-      ])
+      ]
     })
+    editorView.setState(newState)
   }
 })
 
