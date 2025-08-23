@@ -105,7 +105,10 @@ const createTheme = () => {
       padding: '16px',
       minHeight: '100%',
       color: 'var(--linear-text-primary)',
-      backgroundColor: 'var(--linear-bg-primary)'
+      backgroundColor: 'var(--linear-bg-primary)',
+    },
+    '.cm-cursor': {
+      borderLeft: '1px solid white'
     },
     '.cm-focused': {
       outline: 'none'
@@ -135,15 +138,43 @@ const createTheme = () => {
       borderBottom: '2px wavy #ef4444'
     },
     '.cm-tooltip': {
-      backgroundColor: 'var(--linear-surface)',
+      background: 'lightslategray',
       border: '1px solid var(--linear-border)',
       borderRadius: '6px',
       color: 'var(--linear-text-primary)'
     },
     '.cm-placeholder': {
       color: 'var(--linear-text-tertiary)'
+    },
+    '.cm-activeLineGutter': {
+      background: 'transparent'
     }
   })
+}
+
+// Create editor extensions
+const createEditorExtensions = (readonly: boolean) => {
+  return [
+    basicSetup,
+    json(),
+    createJsonLinter(),
+    lintGutter(),
+    createTheme(),
+    syntaxHighlighting(createSyntaxHighlighting()),
+    keymap.of([
+      ...defaultKeymap,
+      ...searchKeymap,
+      indentWithTab
+    ]),
+    EditorView.updateListener.of((update) => {
+      if (update.docChanged && !readonly) {
+        const newValue = update.state.doc.toString()
+        emit('update:modelValue', newValue)
+      }
+    }),
+    EditorState.readOnly.of(readonly),
+    placeholder(props.placeholder)
+  ]
 }
 
 // Initialize the editor
@@ -152,29 +183,7 @@ const initEditor = async () => {
 
   const state = EditorState.create({
     doc: props.modelValue,
-    extensions: [
-      basicSetup,
-      json(),
-      createJsonLinter(),
-      lintGutter(),
-      createTheme(),
-      syntaxHighlighting(createSyntaxHighlighting()), // Add syntax highlighting
-      keymap.of([
-        ...defaultKeymap,
-        ...searchKeymap,
-        indentWithTab
-      ]),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged && !props.readonly) {
-          const newValue = update.state.doc.toString()
-          emit('update:modelValue', newValue)
-        }
-
-
-      }),
-      EditorState.readOnly.of(props.readonly),
-      placeholder(props.placeholder)
-    ]
+    extensions: createEditorExtensions(props.readonly)
   })
 
   editorView = new EditorView({
@@ -201,27 +210,7 @@ watch(() => props.readonly, (readonly) => {
   if (editorView) {
     const newState = EditorState.create({
       doc: editorView.state.doc,
-      extensions: [
-        basicSetup,
-        json(),
-        createJsonLinter(),
-        lintGutter(),
-        createTheme(),
-        syntaxHighlighting(createSyntaxHighlighting()), // Add syntax highlighting
-        keymap.of([
-          ...defaultKeymap,
-          ...searchKeymap,
-          indentWithTab
-        ]),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged && !readonly) {
-            const newValue = update.state.doc.toString()
-            emit('update:modelValue', newValue)
-          }
-        }),
-        EditorState.readOnly.of(readonly),
-        placeholder(props.placeholder)
-      ]
+      extensions: createEditorExtensions(readonly)
     })
     editorView.setState(newState)
   }
