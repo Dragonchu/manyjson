@@ -69,22 +69,15 @@
     }
   },
   "dependencies": {
-    "@codemirror/basic-setup": "^0.20.0",
-    "@codemirror/commands": "^6.8.1",
-    "@codemirror/lang-json": "^6.0.2",
-    "@codemirror/lint": "^6.8.5",
-    "@codemirror/search": "^6.5.11",
-    "@codemirror/state": "^6.5.2",
-    "@codemirror/theme-one-dark": "^6.1.3",
-    "@codemirror/view": "^6.38.1",
     "ajv": "^8.12.0",
     "ajv-formats": "^3.0.1",
-    "codemirror": "^6.0.2",
+    "codemirror": "^5.65.20",
     "pinia": "^3.0.3",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@types/codemirror": "^5.60.16",
     "@types/node": "^20.10.0",
     "@vitejs/plugin-vue": "^4.5.0",
     "@vue/tsconfig": "^0.5.0",

@@ -6,13 +6,26 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { basicSetup } from 'codemirror'
-import { EditorView, keymap, placeholder } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
-import { json } from '@codemirror/lang-json'
-import { linter, lintGutter } from '@codemirror/lint'
-import { searchKeymap } from '@codemirror/search'
-import { defaultKeymap, indentWithTab } from '@codemirror/commands'
+import CodeMirror from 'codemirror'
+
+// Import CodeMirror modes and addons
+import 'codemirror/mode/javascript/javascript'
+import 'codemirror/addon/edit/closebrackets'
+import 'codemirror/addon/edit/matchbrackets'
+import 'codemirror/addon/fold/foldcode'
+import 'codemirror/addon/fold/foldgutter'
+import 'codemirror/addon/fold/brace-fold'
+import 'codemirror/addon/lint/lint'
+import 'codemirror/addon/lint/json-lint'
+import 'codemirror/addon/search/search'
+import 'codemirror/addon/search/searchcursor'
+import 'codemirror/addon/dialog/dialog'
+
+// Import CSS
+import 'codemirror/lib/codemirror.css'
+import 'codemirror/addon/lint/lint.css'
+import 'codemirror/addon/fold/foldgutter.css'
+import 'codemirror/addon/dialog/dialog.css'
 
 interface Props {
   modelValue: string
@@ -34,204 +47,147 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const editorRef = ref<HTMLElement>()
-let editorView: EditorView | null = null
+let editor: CodeMirror.Editor | null = null
 
-// Custom JSON linter that includes schema validation
-const createJsonLinter = () => {
-  return linter((view) => {
-    const doc = view.state.doc.toString()
-    const diagnostics: any[] = []
+// Custom JSON lint function
+const jsonLint = (text: string) => {
+  const found: any[] = []
+  if (!text) return found
+  
+  try {
+    JSON.parse(text)
+  } catch (error: any) {
+    const match = error.message.match(/at position (\d+)/)
+    const pos = match ? parseInt(match[1]) : 0
+    const lines = text.substring(0, pos).split('\n')
+    const line = lines.length - 1
+    const ch = lines[lines.length - 1].length
     
-    // First, check JSON syntax
-    try {
-      const parsed = JSON.parse(doc)
-      
-      // If we have a schema, validate against it
-      if (props.schema) {
-        // Basic schema validation would go here
-        // For now, we'll just validate JSON syntax
-      }
-    } catch (error: any) {
-      // Parse the error to get position information
-      const match = error.message.match(/position (\d+)/)
-      const pos = match ? parseInt(match[1]) : 0
-      
-      diagnostics.push({
-        from: Math.max(0, pos - 1),
-        to: Math.min(doc.length, pos + 1),
-        severity: 'error',
-        message: error.message
-      })
-    }
-    
-    // Emit validation errors
-    emit('validation-change', diagnostics)
-    
-    return diagnostics
-  })
-}
-
-// Create the editor theme
-const createTheme = () => {
-  return EditorView.theme({
-    '&': {
-      height: '100%',
-      fontSize: '13px',
-      fontFamily: 'var(--linear-font-mono, "Monaco", "Menlo", "Ubuntu Mono", monospace)'
-    },
-    '.cm-content': {
-      padding: '16px',
-      minHeight: '100%',
-      color: 'var(--linear-text-primary)',
-      backgroundColor: 'var(--linear-bg-primary)'
-    },
-    '.cm-focused': {
-      outline: 'none'
-    },
-    '.cm-editor': {
-      backgroundColor: 'var(--linear-bg-primary)',
-      border: '1px solid var(--linear-border)',
-      borderRadius: '8px'
-    },
-    '.cm-editor.cm-focused': {
-      borderColor: 'var(--linear-accent)',
-      boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.1)'
-    },
-    '.cm-scroller': {
-      fontFamily: 'var(--linear-font-mono, "Monaco", "Menlo", "Ubuntu Mono", monospace)'
-    },
-    '.cm-gutters': {
-      backgroundColor: 'var(--linear-surface)',
-      borderRight: '1px solid var(--linear-border)',
-      color: 'var(--linear-text-secondary)'
-    },
-    '.cm-lineNumbers .cm-gutterElement': {
-      padding: '0 8px',
-      fontSize: '12px'
-    },
-    '.cm-diagnostic-error': {
-      borderBottom: '2px wavy #ef4444'
-    },
-    '.cm-tooltip': {
-      backgroundColor: 'var(--linear-surface)',
-      border: '1px solid var(--linear-border)',
-      borderRadius: '6px',
-      color: 'var(--linear-text-primary)'
-    },
-    '.cm-placeholder': {
-      color: 'var(--linear-text-tertiary)'
-    }
-  })
+    found.push({
+      from: CodeMirror.Pos(line, ch),
+      to: CodeMirror.Pos(line, ch),
+      message: error.message,
+      severity: 'error'
+    })
+  }
+  
+  // Emit validation errors
+  emit('validation-change', found)
+  
+  return found
 }
 
 // Initialize the editor
 const initEditor = async () => {
   if (!editorRef.value) return
   
-  const state = EditorState.create({
-    doc: props.modelValue,
-    extensions: [
-      basicSetup,
-      json(),
-      createJsonLinter(),
-      lintGutter(),
-      createTheme(),
-      keymap.of([
-        ...defaultKeymap,
-        ...searchKeymap,
-        indentWithTab
-      ]),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged && !props.readonly) {
-          const newValue = update.state.doc.toString()
-          emit('update:modelValue', newValue)
+  editor = CodeMirror(editorRef.value, {
+    value: props.modelValue,
+    mode: { name: 'javascript', json: true },
+    theme: 'default',
+    lineNumbers: true,
+    lineWrapping: true,
+    autoCloseBrackets: true,
+    matchBrackets: true,
+    foldGutter: true,
+    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter', 'CodeMirror-lint-markers'],
+    lint: {
+      getAnnotations: jsonLint,
+      async: false
+    },
+    readOnly: props.readonly,
+    placeholder: props.placeholder,
+    indentUnit: 2,
+    tabSize: 2,
+    indentWithTabs: false,
+    extraKeys: {
+      'Ctrl-F': 'findPersistent',
+      'Cmd-F': 'findPersistent',
+      'Tab': (cm: CodeMirror.Editor) => {
+        if (cm.somethingSelected()) {
+          cm.indentSelection('add')
+        } else {
+          cm.replaceSelection('  ')
         }
-      }),
-      EditorState.readOnly.of(props.readonly),
-      placeholder(props.placeholder)
-    ]
+      }
+    }
   })
   
-  editorView = new EditorView({
-    state,
-    parent: editorRef.value
+  // Listen for changes
+  editor.on('change', (cm: CodeMirror.Editor) => {
+    if (!props.readonly) {
+      const newValue = cm.getValue()
+      emit('update:modelValue', newValue)
+    }
+  })
+  
+  // Apply custom styling
+  applyCustomTheme()
+}
+
+// Apply custom theme to match the original design
+const applyCustomTheme = () => {
+  if (!editor) return
+  
+  const wrapper = editor.getWrapperElement()
+  wrapper.style.height = '100%'
+  wrapper.style.fontSize = '13px'
+  wrapper.style.fontFamily = 'var(--linear-font-mono, "Monaco", "Menlo", "Ubuntu Mono", monospace)'
+  wrapper.style.border = '1px solid var(--linear-border)'
+  wrapper.style.borderRadius = '8px'
+  wrapper.style.backgroundColor = 'var(--linear-bg-primary)'
+  
+  // Add focus styles
+  editor.on('focus', () => {
+    wrapper.style.borderColor = 'var(--linear-accent)'
+    wrapper.style.boxShadow = '0 0 0 2px rgba(99, 102, 241, 0.1)'
+  })
+  
+  editor.on('blur', () => {
+    wrapper.style.borderColor = 'var(--linear-border)'
+    wrapper.style.boxShadow = 'none'
   })
 }
 
 // Update editor content when modelValue changes
 watch(() => props.modelValue, (newValue) => {
-  if (editorView && newValue !== editorView.state.doc.toString()) {
-    editorView.dispatch({
-      changes: {
-        from: 0,
-        to: editorView.state.doc.length,
-        insert: newValue
-      }
-    })
+  if (editor && newValue !== editor.getValue()) {
+    const cursor = editor.getCursor()
+    editor.setValue(newValue)
+    editor.setCursor(cursor)
   }
 })
 
 // Update readonly state
 watch(() => props.readonly, (readonly) => {
-  if (editorView) {
-    editorView.dispatch({
-      effects: EditorState.reconfigure.of([
-        basicSetup,
-        json(),
-        createJsonLinter(),
-        lintGutter(),
-        createTheme(),
-        keymap.of([
-          ...defaultKeymap,
-          ...searchKeymap,
-          indentWithTab
-        ]),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged && !readonly) {
-            const newValue = update.state.doc.toString()
-            emit('update:modelValue', newValue)
-          }
-        }),
-        EditorState.readOnly.of(readonly),
-        placeholder(props.placeholder)
-      ])
-    })
+  if (editor) {
+    editor.setOption('readOnly', readonly)
   }
 })
 
 // Expose methods for parent components
 const focus = () => {
-  editorView?.focus()
+  editor?.focus()
 }
 
 const getSelection = () => {
-  if (!editorView) return ''
-  const { from, to } = editorView.state.selection.main
-  return editorView.state.doc.sliceString(from, to)
+  return editor?.getSelection() || ''
 }
 
 const insertText = (text: string) => {
-  if (!editorView || props.readonly) return
-  const { from, to } = editorView.state.selection.main
-  editorView.dispatch({
-    changes: { from, to, insert: text },
-    selection: { anchor: from + text.length }
-  })
+  if (!editor || props.readonly) return
+  editor.replaceSelection(text)
 }
 
 const formatJson = () => {
-  if (!editorView || props.readonly) return
+  if (!editor || props.readonly) return
   try {
-    const content = editorView.state.doc.toString()
+    const content = editor.getValue()
     const parsed = JSON.parse(content)
     const formatted = JSON.stringify(parsed, null, 2)
-    editorView.dispatch({
-      changes: {
-        from: 0,
-        to: editorView.state.doc.length,
-        insert: formatted
-      }
-    })
+    const cursor = editor.getCursor()
+    editor.setValue(formatted)
+    editor.setCursor(cursor)
   } catch (error) {
     // Invalid JSON, don't format
   }
@@ -251,9 +207,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (editorView) {
-    editorView.destroy()
-    editorView = null
+  if (editor) {
+    editor.toTextArea()
+    editor = null
   }
 })
 </script>
@@ -270,11 +226,61 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-:deep(.cm-editor) {
+/* Custom CodeMirror 5 styling */
+:deep(.CodeMirror) {
   height: 100%;
+  color: var(--linear-text-primary);
+  background-color: var(--linear-bg-primary);
 }
 
-:deep(.cm-scroller) {
-  height: 100%;
+:deep(.CodeMirror-scroll) {
+  padding: 16px;
+}
+
+:deep(.CodeMirror-gutters) {
+  background-color: var(--linear-surface);
+  border-right: 1px solid var(--linear-border);
+  color: var(--linear-text-secondary);
+}
+
+:deep(.CodeMirror-linenumber) {
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--linear-text-secondary);
+}
+
+:deep(.CodeMirror-lint-marker-error) {
+  background: #ef4444;
+  border-radius: 2px;
+}
+
+:deep(.CodeMirror-lint-tooltip) {
+  background-color: var(--linear-surface);
+  border: 1px solid var(--linear-border);
+  border-radius: 6px;
+  color: var(--linear-text-primary);
+}
+
+:deep(.cm-error) {
+  border-bottom: 2px wavy #ef4444;
+}
+
+:deep(.CodeMirror-placeholder) {
+  color: var(--linear-text-tertiary);
+}
+
+:deep(.CodeMirror-dialog) {
+  background-color: var(--linear-surface);
+  border: 1px solid var(--linear-border);
+  border-radius: 6px;
+  color: var(--linear-text-primary);
+}
+
+:deep(.CodeMirror-dialog input) {
+  background-color: var(--linear-bg-primary);
+  border: 1px solid var(--linear-border);
+  border-radius: 4px;
+  color: var(--linear-text-primary);
+  padding: 4px 8px;
 }
 </style>
