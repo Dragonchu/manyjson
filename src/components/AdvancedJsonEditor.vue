@@ -5,27 +5,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import CodeMirror from 'codemirror'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 // Import CodeMirror modes and addons
-import 'codemirror/mode/javascript/javascript'
+import 'codemirror/addon/dialog/dialog'
 import 'codemirror/addon/edit/closebrackets'
 import 'codemirror/addon/edit/matchbrackets'
+import 'codemirror/addon/fold/brace-fold'
 import 'codemirror/addon/fold/foldcode'
 import 'codemirror/addon/fold/foldgutter'
-import 'codemirror/addon/fold/brace-fold'
-import 'codemirror/addon/lint/lint'
 import 'codemirror/addon/lint/json-lint'
+import 'codemirror/addon/lint/lint'
 import 'codemirror/addon/search/search'
 import 'codemirror/addon/search/searchcursor'
-import 'codemirror/addon/dialog/dialog'
+import 'codemirror/mode/javascript/javascript'
 
 // Import CSS
-import 'codemirror/lib/codemirror.css'
-import 'codemirror/addon/lint/lint.css'
-import 'codemirror/addon/fold/foldgutter.css'
 import 'codemirror/addon/dialog/dialog.css'
+import 'codemirror/addon/fold/foldgutter.css'
+import 'codemirror/addon/lint/lint.css'
+import 'codemirror/lib/codemirror.css'
 
 interface Props {
   modelValue: string
