@@ -9,7 +9,7 @@ on:
       version:
         description: 'Version to release'
         required: true
-        default: 'v0.2.0'
+        default: 'v0.3.0'
 
 jobs:
   build:
@@ -69,16 +69,25 @@ jobs:
       - name: Display structure of downloaded files
         run: find artifacts -type f -name "*" | head -20
 
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name || github.event.inputs.version }}
-          name: Release ${{ github.ref_name || github.event.inputs.version }}
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
           body: |
-            ## ManyJson Release ${{ github.ref_name || github.event.inputs.version }}
+            ## ManyJson Release ${{ steps.get_version.outputs.version }}
             
             JSON Schema Manager built with Vue 3 and Electron
             
@@ -96,6 +105,8 @@ jobs:
             
           draft: false
           prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: false
           files: |
             artifacts/mac-build/*.dmg
             artifacts/mac-build/*.zip
