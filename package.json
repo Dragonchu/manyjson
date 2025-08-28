@@ -21,16 +21,19 @@
     "directories": {
       "output": "dist"
     },
+    "icon": "assets/icon.png",
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "linux": {
       "target": [
         "AppImage",
         "snap"
-      ]
+      ],
+      "icon": "assets/icon.png"
     },
     "mac": {
       "target": [
@@ -49,7 +52,8 @@
           ]
         }
       ],
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.icns"
     },
     "win": {
       "target": [
@@ -65,7 +69,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "assets/icon.ico"
     }
   },
   "dependencies": {

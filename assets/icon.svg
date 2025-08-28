@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#gradient)" />
+  
+  <!-- JSON curly braces -->
+  <g stroke="white" stroke-width="24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left brace -->
+    <path d="M 160 180 C 140 180, 120 200, 120 220 L 120 240 C 120 250, 110 260, 100 260 C 110 260, 120 270, 120 280 L 120 300 C 120 320, 140 340, 160 340" />
+    
+    <!-- Right brace -->
+    <path d="M 352 180 C 372 180, 392 200, 392 220 L 392 240 C 392 250, 402 260, 412 260 C 402 260, 392 270, 392 280 L 392 300 C 392 320, 372 340, 352 340" />
+  </g>
+  
+  <!-- JSON text -->
+  <text x="256" y="280" font-family="Arial, sans-serif" font-size="48" font-weight="600" text-anchor="middle" fill="white">JSON</text>
+</svg>
