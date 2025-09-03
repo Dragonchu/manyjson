@@ -15,6 +15,8 @@ import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 import { basicSetup } from 'codemirror'
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import Ajv from 'ajv'
+import addFormats from 'ajv-formats'
 
 interface Props {
   modelValue: string
@@ -38,6 +40,148 @@ const emit = defineEmits<Emits>()
 const editorRef = ref<HTMLElement>()
 let editorView: EditorView | null = null
 
+// Initialize AJV instance
+const ajv = new Ajv({ 
+  allErrors: true, 
+  verbose: true,
+  strict: false 
+})
+addFormats(ajv)
+
+// Cache compiled validator for performance
+let compiledValidator: any = null
+
+// Watch schema changes to recompile validator
+watch(() => props.schema, (newSchema) => {
+  if (newSchema) {
+    try {
+      compiledValidator = ajv.compile(newSchema)
+    } catch (error) {
+      console.warn('Failed to compile schema:', error)
+      compiledValidator = null
+    }
+  } else {
+    compiledValidator = null
+  }
+}, { immediate: true })
+
+// Helper function to find line and column from character position
+const getLineColumnFromPos = (doc: string, pos: number) => {
+  const lines = doc.substring(0, pos).split('\n')
+  return {
+    line: lines.length,
+    column: lines[lines.length - 1].length + 1
+  }
+}
+
+// Helper function to find character position from JSON path
+const findPositionFromPath = (doc: string, instancePath: string, propertyName?: string): { from: number; to: number } => {
+  try {
+    // For missing properties, try to find the parent object
+    if (propertyName && instancePath !== undefined) {
+      const pathSegments = instancePath.split('/').filter(segment => segment !== '')
+      
+      if (pathSegments.length === 0) {
+        // Root level missing property - find the end of the root object to suggest insertion point
+        const openBrace = doc.indexOf('{')
+        const closeBrace = doc.lastIndexOf('}')
+        if (openBrace !== -1 && closeBrace !== -1) {
+          // Find a good insertion point (before the closing brace)
+          let insertPos = closeBrace
+          // Look for the last property to position after it
+          const lastComma = doc.lastIndexOf(',', closeBrace)
+          if (lastComma !== -1) {
+            insertPos = lastComma + 1
+          }
+          return { from: insertPos, to: insertPos }
+        }
+      } else {
+        // Navigate to parent object and find insertion point
+        let searchPattern = ''
+        for (let i = 0; i < pathSegments.length; i++) {
+          const segment = pathSegments[i]
+          if (i === 0) {
+            searchPattern = `"${segment}"`
+          } else {
+            searchPattern += `[\\s\\S]*?"${segment}"`
+          }
+        }
+        
+        const regex = new RegExp(searchPattern)
+        const match = regex.exec(doc)
+        if (match) {
+          const startPos = match.index + match[0].length
+          // Find the object containing this path
+          let braceCount = 0
+          let pos = startPos
+          while (pos < doc.length) {
+            if (doc[pos] === '{') {
+              braceCount++
+              if (braceCount === 1) {
+                // Found opening brace, look for insertion point
+                const closingBrace = doc.indexOf('}', pos)
+                if (closingBrace !== -1) {
+                  return { from: closingBrace, to: closingBrace }
+                }
+              }
+            } else if (doc[pos] === '}') {
+              braceCount--
+            }
+            pos++
+          }
+        }
+      }
+    }
+    
+    // For other errors, try to find the exact property or value
+    if (instancePath) {
+      const pathSegments = instancePath.split('/').filter(segment => segment !== '')
+      let searchPattern = ''
+      
+      for (let i = 0; i < pathSegments.length; i++) {
+        const segment = pathSegments[i]
+        if (isNaN(parseInt(segment))) {
+          // Property name
+          if (i === 0) {
+            searchPattern = `"${segment}"`
+          } else {
+            searchPattern += `[\\s\\S]*?"${segment}"`
+          }
+        } else {
+          // Array index - this is more complex, skip for now
+          searchPattern += `[\\s\\S]*?\\[\\s*${segment}\\s*\\]`
+        }
+      }
+      
+      if (searchPattern) {
+        const regex = new RegExp(searchPattern)
+        const match = regex.exec(doc)
+        if (match) {
+          const startPos = match.index
+          const endPos = startPos + match[0].length
+          return { from: startPos, to: endPos }
+        }
+      }
+      
+      // Fallback: search for individual path segments
+      for (const segment of pathSegments) {
+        if (!isNaN(parseInt(segment))) continue // Skip array indices
+        
+        const quotedSegment = `"${segment}"`
+        const index = doc.indexOf(quotedSegment)
+        if (index !== -1) {
+          return { from: index, to: index + quotedSegment.length }
+        }
+      }
+    }
+    
+    // Ultimate fallback
+    return { from: 0, to: 1 }
+  } catch {
+    return { from: 0, to: 1 }
+  }
+}
+
 // Custom JSON linter that includes schema validation
 const createJsonLinter = () => {
   return linter((view) => {
@@ -45,14 +189,9 @@ const createJsonLinter = () => {
     const diagnostics: any[] = []
     
     // First, check JSON syntax
+    let parsedJson: any = null
     try {
-      JSON.parse(doc)
-
-      // If we have a schema, validate against it
-      if (props.schema) {
-        // Basic schema validation would go here
-        // For now, we'll just validate JSON syntax
-      }
+      parsedJson = JSON.parse(doc)
     } catch (error: any) {
       // Parse the error to get position information
       const match = error.message.match(/position (\d+)/)
@@ -64,6 +203,91 @@ const createJsonLinter = () => {
         severity: 'error',
         message: error.message
       })
+    }
+
+    // If JSON is valid and we have a compiled validator, validate against it
+    if (parsedJson && compiledValidator) {
+      try {
+        const isValid = compiledValidator(parsedJson)
+        
+        if (!isValid && compiledValidator.errors) {
+          for (const error of compiledValidator.errors) {
+            const instancePath = error.instancePath || ''
+            const propertyName = error.params?.missingProperty || 
+                               (error.keyword === 'additionalProperties' ? error.params?.additionalProperty : undefined)
+            
+            // Find the position in the document
+            const errorPosition = findPositionFromPath(doc, instancePath, propertyName)
+            
+            // Create a more user-friendly error message
+            let message = ''
+            switch (error.keyword) {
+              case 'required':
+                message = `Missing required property: ${error.params?.missingProperty}`
+                break
+              case 'type':
+                message = `Expected ${error.params?.type}, got ${typeof error.data}`
+                break
+              case 'additionalProperties':
+                message = `Additional property not allowed: ${error.params?.additionalProperty}`
+                break
+              case 'enum':
+                message = `Value must be one of: ${error.params?.allowedValues?.join(', ')}`
+                break
+              case 'format':
+                message = `Invalid ${error.params?.format} format`
+                break
+              case 'minimum':
+                message = `Value must be >= ${error.params?.limit}`
+                break
+              case 'maximum':
+                message = `Value must be <= ${error.params?.limit}`
+                break
+              case 'minLength':
+                message = `String must be at least ${error.params?.limit} characters`
+                break
+              case 'maxLength':
+                message = `String must be at most ${error.params?.limit} characters`
+                break
+              case 'pattern':
+                message = `String does not match required pattern`
+                break
+              case 'minItems':
+                message = `Array must have at least ${error.params?.limit} items`
+                break
+              case 'maxItems':
+                message = `Array must have at most ${error.params?.limit} items`
+                break
+              case 'uniqueItems':
+                message = `Array items must be unique`
+                break
+              default:
+                message = error.message || 'Schema validation error'
+            }
+            
+            // Add path context if available
+            if (instancePath) {
+              message = `At ${instancePath}: ${message}`
+            }
+            
+            diagnostics.push({
+              from: errorPosition.from,
+              to: errorPosition.to,
+              severity: 'error',
+              message,
+              source: 'schema-validation'
+            })
+          }
+        }
+      } catch (schemaError: any) {
+        // If schema compilation fails, show a warning
+        diagnostics.push({
+          from: 0,
+          to: 1,
+          severity: 'warning',
+          message: `Schema validation error: ${schemaError.message}`
+        })
+      }
     }
     
     // Emit validation errors
