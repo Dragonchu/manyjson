@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 import { useUIStore } from '@/stores/ui'
 import JsonHighlight from './JsonHighlight.vue'
 
