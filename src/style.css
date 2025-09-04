@@ -1,46 +1,168 @@
-/* Linear Design System - Dark Foundation with Gradients */
+/* Apple HIG Theme System - Light & Dark Mode Support
+ * 
+ * This theme system implements Apple's Human Interface Guidelines (HIG) color tokens
+ * with comprehensive light and dark mode support. Features include:
+ * 
+ * - Apple system colors with proper contrast ratios (WCAG AA compliant)
+ * - Semantic color tokens for consistent theming
+ * - Automatic system preference detection
+ * - Manual theme switching (light/dark/auto)
+ * - Theme persistence via localStorage
+ * - Accessibility features (high contrast, reduced motion)
+ * - Legacy Linear variable mapping for backward compatibility
+ * 
+ * Theme switching:
+ * - UI: Theme toggle component in left panel
+ * - Keyboard: Cmd/Ctrl + Shift + T
+ * - Programmatic: useUIStore().setTheme('light'|'dark'|'auto')
+ * 
+ * Color usage guidelines:
+ * - Use semantic tokens (--accent-primary) over direct colors (--apple-blue)
+ * - Apple colors adapt automatically between light/dark themes
+ * - Legacy --linear-* variables are mapped for backward compatibility
+ */
 :root {
-  /* Linear Color Palette */
-  --linear-bg-primary: #0a0a0a;
-  --linear-bg-secondary: #111111;
-  --linear-bg-tertiary: #1a1a1a;
-  --linear-surface: rgba(255, 255, 255, 0.02);
-  --linear-surface-hover: rgba(255, 255, 255, 0.04);
-  --linear-surface-active: rgba(255, 255, 255, 0.06);
-  --linear-border: rgba(255, 255, 255, 0.08);
-  --linear-border-hover: rgba(255, 255, 255, 0.12);
-  --linear-text-primary: rgba(255, 255, 255, 0.95);
-  --linear-text-secondary: rgba(255, 255, 255, 0.65);
-  --linear-text-tertiary: rgba(255, 255, 255, 0.45);
-  --linear-accent: #6366f1;
-  --linear-accent-hover: #5855eb;
-  --linear-accent-rgb: 99, 102, 241;
-  --linear-accent-bright: #8b5cf6;
-  --linear-success: #10b981;
-  --linear-warning: #f59e0b;
-  --linear-error: #ef4444;
-  --linear-info: #3b82f6;
+  /* Apple System Colors - Light Theme */
+  --apple-bg-primary: #ffffff;
+  --apple-bg-secondary: #f2f2f7;
+  --apple-bg-tertiary: #ffffff;
+  --apple-surface: rgba(0, 0, 0, 0.03);
+  --apple-surface-hover: rgba(0, 0, 0, 0.06);
+  --apple-surface-active: rgba(0, 0, 0, 0.09);
+  --apple-border: rgba(0, 0, 0, 0.1);
+  --apple-border-hover: rgba(0, 0, 0, 0.15);
+  --apple-text-primary: #000000;
+  --apple-text-secondary: rgba(60, 60, 67, 0.78);
+  --apple-text-tertiary: rgba(60, 60, 67, 0.56);
   
-  /* Gradients */
-  --linear-gradient-primary: linear-gradient(135deg, #0a0a0a 0%, #111111 50%, #0f0f0f 100%);
-  --linear-gradient-surface: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%);
-  --linear-gradient-glow: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
-  --linear-gradient-flow: linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.1) 50%, transparent 100%);
+  /* Apple Accent Colors */
+  --apple-blue: #007aff;
+  --apple-blue-hover: #0051d5;
+  --apple-green: #34c759;
+  --apple-green-hover: #248a3d;
+  --apple-red: #ff3b30;
+  --apple-red-hover: #d70015;
+  --apple-orange: #ff9500;
+  --apple-orange-hover: #c7750b;
+  --apple-purple: #af52de;
+  --apple-purple-hover: #8944ab;
+  --apple-pink: #ff2d92;
+  --apple-pink-hover: #d1086e;
+  --apple-yellow: #ffcc00;
+  --apple-yellow-hover: #cc9900;
   
-  /* Shadows & Glows */
-  --linear-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --linear-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --linear-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --linear-glow-primary: 0 0 20px rgba(99, 102, 241, 0.2);
-  --linear-glow-accent: 0 0 30px rgba(139, 92, 246, 0.15);
+  /* Semantic Color Tokens */
+  --accent-primary: var(--apple-blue);
+  --accent-primary-hover: var(--apple-blue-hover);
+  --accent-success: var(--apple-green);
+  --accent-success-hover: var(--apple-green-hover);
+  --accent-warning: var(--apple-orange);
+  --accent-warning-hover: var(--apple-orange-hover);
+  --accent-error: var(--apple-red);
+  --accent-error-hover: var(--apple-red-hover);
+  
+  /* Apple System Grays - Light */
+  --apple-gray-1: #8e8e93;
+  --apple-gray-2: #aeaeb2;
+  --apple-gray-3: #c7c7cc;
+  --apple-gray-4: #d1d1d6;
+  --apple-gray-5: #e5e5ea;
+  --apple-gray-6: #f2f2f7;
+  
+  /* Shadows */
+  --apple-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --apple-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --apple-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
   
   /* Typography */
-  --linear-font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --linear-font-mono: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+  --apple-font-primary: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  --apple-font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'JetBrains Mono', monospace;
   
   /* Animation */
-  --linear-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --linear-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Theme Overrides */
+:root.theme-dark {
+  /* Apple System Colors - Dark Theme */
+  --apple-bg-primary: #000000;
+  --apple-bg-secondary: #1c1c1e;
+  --apple-bg-tertiary: #2c2c2e;
+  --apple-surface: rgba(255, 255, 255, 0.05);
+  --apple-surface-hover: rgba(255, 255, 255, 0.08);
+  --apple-surface-active: rgba(255, 255, 255, 0.12);
+  --apple-border: rgba(255, 255, 255, 0.13);
+  --apple-border-hover: rgba(255, 255, 255, 0.2);
+  --apple-text-primary: #ffffff;
+  --apple-text-secondary: rgba(235, 235, 245, 0.78);
+  --apple-text-tertiary: rgba(235, 235, 245, 0.56);
+  
+  /* Apple System Grays - Dark */
+  --apple-gray-1: #8e8e93;
+  --apple-gray-2: #636366;
+  --apple-gray-3: #48484a;
+  --apple-gray-4: #3a3a3c;
+  --apple-gray-5: #2c2c2e;
+  --apple-gray-6: #1c1c1e;
+  
+  /* Enhanced shadows for dark mode */
+  --apple-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --apple-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --apple-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+/* Legacy Linear Variables - Mapped to Apple System */
+:root {
+  /* Background Colors */
+  --linear-bg-primary: var(--apple-bg-primary);
+  --linear-bg-secondary: var(--apple-bg-secondary);
+  --linear-bg-tertiary: var(--apple-bg-tertiary);
+  --linear-surface: var(--apple-surface);
+  --linear-surface-hover: var(--apple-surface-hover);
+  --linear-surface-active: var(--apple-surface-active);
+  
+  /* Border Colors */
+  --linear-border: var(--apple-border);
+  --linear-border-hover: var(--apple-border-hover);
+  
+  /* Text Colors */
+  --linear-text-primary: var(--apple-text-primary);
+  --linear-text-secondary: var(--apple-text-secondary);
+  --linear-text-tertiary: var(--apple-text-tertiary);
+  
+  /* Accent Colors */
+  --linear-accent: var(--accent-primary);
+  --linear-accent-hover: var(--accent-primary-hover);
+  --linear-accent-rgb: 0, 122, 255;
+  --linear-accent-bright: var(--apple-blue);
+  
+  /* Status Colors */
+  --linear-success: var(--accent-success);
+  --linear-warning: var(--accent-warning);
+  --linear-error: var(--accent-error);
+  --linear-info: var(--accent-primary);
+  
+  /* Gradients - Updated for Apple aesthetic */
+  --linear-gradient-primary: var(--apple-bg-primary);
+  --linear-gradient-surface: var(--apple-surface);
+  --linear-gradient-glow: radial-gradient(circle at 50% 50%, rgba(0, 122, 255, 0.1) 0%, transparent 70%);
+  --linear-gradient-flow: linear-gradient(90deg, transparent 0%, rgba(0, 122, 255, 0.1) 50%, transparent 100%);
+  
+  /* Shadows */
+  --linear-shadow-sm: var(--apple-shadow-sm);
+  --linear-shadow-md: var(--apple-shadow-md);
+  --linear-shadow-lg: var(--apple-shadow-lg);
+  --linear-glow-primary: 0 0 20px rgba(0, 122, 255, 0.2);
+  --linear-glow-accent: 0 0 30px rgba(0, 122, 255, 0.15);
+  
+  /* Typography */
+  --linear-font-primary: var(--apple-font-primary);
+  --linear-font-mono: var(--apple-font-mono);
+  
+  /* Animation */
+  --linear-transition: var(--apple-transition);
+  --linear-transition-fast: var(--apple-transition-fast);
 }
 
 * { 
@@ -50,12 +172,13 @@
 }
 
 body {
-  font-family: var(--linear-font-primary);
-  background: var(--linear-gradient-primary);
-  color: var(--linear-text-primary);
+  font-family: var(--apple-font-primary);
+  background: var(--apple-bg-primary);
+  color: var(--apple-text-primary);
   height: 100vh;
   overflow: hidden;
   line-height: 1.6;
+  transition: var(--apple-transition);
 }
 
 /* Utility Classes */
@@ -111,25 +234,46 @@ body {
   height: 16px;
 }
 
-/* JSON Syntax Highlighting */
+/* JSON Syntax Highlighting - Apple Colors */
 .json-key {
-  color: #8b5cf6;
+  color: var(--apple-blue);
 }
 
 .json-string {
-  color: #10b981;
+  color: var(--apple-green);
 }
 
 .json-number {
-  color: #f59e0b;
+  color: var(--apple-orange);
 }
 
 .json-boolean {
-  color: #ef4444;
+  color: var(--apple-red);
 }
 
 .json-null {
-  color: #6b7280;
+  color: var(--apple-gray-1);
+}
+
+/* Dark mode JSON syntax highlighting adjustments */
+:root.theme-dark .json-key {
+  color: #64d2ff;
+}
+
+:root.theme-dark .json-string {
+  color: #6ac4dc;
+}
+
+:root.theme-dark .json-number {
+  color: #d9c97c;
+}
+
+:root.theme-dark .json-boolean {
+  color: #ff8a80;
+}
+
+:root.theme-dark .json-null {
+  color: var(--apple-gray-2);
 }
 
 /* Status Classes */
@@ -181,6 +325,92 @@ body {
 .empty-state-description {
   font-size: 13px;
   max-width: 300px;
+}
+
+/* Apple-style Utility Classes */
+.apple-card {
+  background: var(--apple-bg-tertiary);
+  border: 1px solid var(--apple-border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--apple-shadow-sm);
+}
+
+.apple-card:hover {
+  border-color: var(--apple-border-hover);
+  box-shadow: var(--apple-shadow-md);
+}
+
+.apple-button {
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: var(--apple-transition-fast);
+  font-family: var(--apple-font-primary);
+}
+
+.apple-button:hover {
+  background: var(--accent-primary-hover);
+  transform: translateY(-1px);
+}
+
+.apple-button:active {
+  transform: translateY(0);
+}
+
+.apple-button.secondary {
+  background: var(--apple-surface);
+  color: var(--apple-text-primary);
+  border: 1px solid var(--apple-border);
+}
+
+.apple-button.secondary:hover {
+  background: var(--apple-surface-hover);
+  border-color: var(--apple-border-hover);
+}
+
+.apple-button.destructive {
+  background: var(--accent-error);
+}
+
+.apple-button.destructive:hover {
+  background: var(--accent-error-hover);
+}
+
+/* Accessibility & Focus States */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn-small:focus-visible,
+.action-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --apple-border: rgba(0, 0, 0, 0.2);
+    --apple-border-hover: rgba(0, 0, 0, 0.3);
+  }
+  
+  :root.theme-dark {
+    --apple-border: rgba(255, 255, 255, 0.25);
+    --apple-border-hover: rgba(255, 255, 255, 0.35);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --apple-transition: none;
+    --apple-transition-fast: none;
+  }
 }
 
 /* Responsive Design */

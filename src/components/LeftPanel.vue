@@ -2,9 +2,12 @@
   <div class="left-panel">
     <div class="left-panel-header">
       <div class="left-panel-title">JSON Schema Manager</div>
-      <div class="schema-actions">
-        <button class="btn-small" @click="handleAddSchema">Add</button>
-        <button class="btn-small" @click="handleRefresh">Refresh</button>
+      <div class="header-controls">
+        <ThemeToggle />
+        <div class="schema-actions">
+          <button class="btn-small" @click="handleAddSchema">Add</button>
+          <button class="btn-small" @click="handleRefresh">Refresh</button>
+        </div>
       </div>
     </div>
     <div class="schema-tree">
@@ -35,6 +38,7 @@
 import { ref } from 'vue'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
 import AddSchemaDialog from './AddSchemaDialog.vue'
+import ThemeToggle from './ThemeToggle.vue'
 
 const appStore = useAppStore()
 const addSchemaDialog = ref<InstanceType<typeof AddSchemaDialog>>()
@@ -82,7 +86,13 @@ function showContextMenu(event: MouseEvent, schema: SchemaInfo) {
   font-size: 14px;
   font-weight: 600;
   color: var(--linear-text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.header-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .schema-actions {

@@ -17,6 +17,7 @@ import { basicSetup } from 'codemirror'
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import Ajv from 'ajv'
 import addFormats from 'ajv-formats'
+import { useUIStore } from '@/stores/ui'
 
 interface Props {
   modelValue: string
@@ -39,6 +40,7 @@ const emit = defineEmits<Emits>()
 
 const editorRef = ref<HTMLElement>()
 let editorView: EditorView | null = null
+const uiStore = useUIStore()
 
 // Initialize AJV instance
 const ajv = new Ajv({ 
@@ -300,16 +302,18 @@ const createJsonLinter = () => {
 // Create syntax highlighting style
 const createSyntaxHighlighting = () => {
   try {
+    const isDark = document.documentElement.classList.contains('theme-dark')
+    
     return HighlightStyle.define([
-      { tag: tags.string, color: '#10b981' },     // Green for strings
-      { tag: tags.number, color: '#f59e0b' },     // Orange for numbers
-      { tag: tags.bool, color: '#ef4444' },        // Red for booleans
-      { tag: tags.null, color: '#6b7280' },        // Gray for null
-      { tag: tags.propertyName, color: '#8b5cf6' }, // Purple for keys
-      { tag: tags.punctuation, color: 'var(--linear-text-primary)' }, // White for punctuation
-      { tag: tags.brace, color: 'var(--linear-text-primary)' },     // White for braces
-      { tag: tags.bracket, color: 'var(--linear-text-primary)' },   // White for brackets
-      { tag: tags.separator, color: 'var(--linear-text-primary)' }   // White for separators
+      { tag: tags.string, color: isDark ? '#6ac4dc' : 'var(--apple-green)' },
+      { tag: tags.number, color: isDark ? '#d9c97c' : 'var(--apple-orange)' },
+      { tag: tags.bool, color: isDark ? '#ff8a80' : 'var(--apple-red)' },
+      { tag: tags.null, color: isDark ? 'var(--apple-gray-2)' : 'var(--apple-gray-1)' },
+      { tag: tags.propertyName, color: isDark ? '#64d2ff' : 'var(--apple-blue)' },
+      { tag: tags.punctuation, color: 'var(--apple-text-primary)' },
+      { tag: tags.brace, color: 'var(--apple-text-primary)' },
+      { tag: tags.bracket, color: 'var(--apple-text-primary)' },
+      { tag: tags.separator, color: 'var(--apple-text-primary)' }
     ])
   } catch (error) {
     console.warn('Failed to create syntax highlighting:', error)
@@ -332,7 +336,7 @@ const createTheme = () => {
       backgroundColor: 'var(--linear-bg-primary)',
     },
     '.cm-cursor': {
-      borderLeft: '1px solid white'
+      borderLeft: '1px solid var(--apple-text-primary)'
     },
     '.cm-focused': {
       outline: 'none'
@@ -343,8 +347,8 @@ const createTheme = () => {
       borderRadius: '8px'
     },
     '.cm-editor.cm-focused': {
-      borderColor: 'var(--linear-accent)',
-      boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.1)'
+      borderColor: 'var(--accent-primary)',
+      boxShadow: '0 0 0 2px rgba(0, 122, 255, 0.1)'
     },
     '.cm-scroller': {
       fontFamily: 'var(--linear-font-mono, "Monaco", "Menlo", "Ubuntu Mono", monospace)'
@@ -359,13 +363,13 @@ const createTheme = () => {
       fontSize: '12px'
     },
     '.cm-diagnostic-error': {
-      borderBottom: '2px wavy #ef4444'
+      borderBottom: '2px wavy var(--accent-error)'
     },
     '.cm-tooltip': {
-      background: 'lightslategray',
-      border: '1px solid var(--linear-border)',
+      background: 'var(--apple-bg-secondary)',
+      border: '1px solid var(--apple-border)',
       borderRadius: '6px',
-      color: 'var(--linear-text-primary)'
+      color: 'var(--apple-text-primary)'
     },
     '.cm-placeholder': {
       color: 'var(--linear-text-tertiary)'
@@ -435,6 +439,17 @@ watch(() => props.readonly, (readonly) => {
     const newState = EditorState.create({
       doc: editorView.state.doc,
       extensions: createEditorExtensions(readonly)
+    })
+    editorView.setState(newState)
+  }
+})
+
+// Update editor when theme changes
+watch(() => uiStore.currentTheme, () => {
+  if (editorView) {
+    const newState = EditorState.create({
+      doc: editorView.state.doc,
+      extensions: createEditorExtensions(props.readonly)
     })
     editorView.setState(newState)
   }

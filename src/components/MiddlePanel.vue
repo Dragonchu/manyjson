@@ -232,7 +232,7 @@ onUnmounted(() => {
 }
 
 .btn-add:hover {
-  background: var(--linear-accent-hover, #0066cc);
+  background: var(--accent-primary-hover);
   transform: translateY(-1px);
 }
 
