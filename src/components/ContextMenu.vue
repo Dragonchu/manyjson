@@ -199,30 +199,31 @@ onUnmounted(() => {
   position: fixed;
   background: var(--apple-bg-primary);
   border: 1px solid var(--apple-border);
-  border-radius: 12px; /* Apple HIG standard radius for menus */
+  border-radius: var(--radius-lg); /* 12px */
   box-shadow: var(--apple-shadow-lg);
-  padding: 6px 0;
+  padding: var(--spacing-sm) 0; /* 8px 0 */
   min-width: 180px;
   z-index: 1000;
   backdrop-filter: blur(20px); /* Apple-style backdrop blur */
 }
 
 .context-menu-item {
-  padding: 12px 16px; /* Increased padding for better touch target */
-  font-size: 14px; /* Improved readability */
+  padding: var(--spacing-md) var(--spacing-lg); /* 16px 20px */
+  font-size: var(--text-base); /* 14px */
   cursor: pointer;
   transition: var(--apple-transition-fast);
   color: var(--apple-text-primary);
-  min-height: 44px; /* Apple HIG minimum touch target */
+  min-height: var(--touch-target-md); /* 44px */
   display: flex;
   align-items: center;
-  font-weight: 400;
+  font-weight: var(--font-normal); /* 400 */
+  line-height: var(--leading-normal);
 }
 
 .context-menu-item:hover {
   background: var(--apple-surface-hover);
-  border-radius: 6px;
-  margin: 0 6px;
+  border-radius: var(--spacing-sm); /* 8px */
+  margin: 0 var(--spacing-sm); /* 0 8px */
 }
 
 .context-menu-item:active {
@@ -232,6 +233,6 @@ onUnmounted(() => {
 .context-menu-separator {
   height: 1px;
   background: var(--apple-border);
-  margin: 6px 12px;
+  margin: var(--spacing-sm) var(--spacing-md); /* 8px 16px */
 }
 </style>
