@@ -46,6 +46,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import AddSchemaDialog from './AddSchemaDialog.vue'
@@ -54,6 +55,7 @@ import ThemeToggle from './ThemeToggle.vue'
 const appStore = useAppStore()
 const ui = useUIStore()
 const addSchemaDialog = ref<InstanceType<typeof AddSchemaDialog>>()
+const router = useRouter()
 
 const leftPanelStyle = computed(() => {
   if (ui.leftSidebarCollapsed) {
@@ -63,7 +65,8 @@ const leftPanelStyle = computed(() => {
 })
 
 function selectSchema(schema: SchemaInfo) {
-  appStore.setCurrentSchema(schema)
+  // Navigate to schema route to keep URL and state in sync
+  router.push({ name: 'Schema', params: { schemaName: schema.name } })
 }
 
 function handleAddSchema() {

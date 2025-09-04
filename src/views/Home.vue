@@ -27,7 +27,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppSidebar from '@/components/AppSidebar.vue'
 import MiddlePanel from '@/components/MiddlePanel.vue'
 import RightPanel from '@/components/RightPanel.vue'
@@ -39,6 +40,8 @@ import { useUIStore } from '@/stores/ui'
 
 const appStore = useAppStore()
 const ui = useUIStore()
+const route = useRoute()
+const router = useRouter()
 
 let isResizingLeft = false
 let startX = 0
@@ -86,6 +89,9 @@ onMounted(async () => {
   // Initialize the application
   await appStore.loadSchemas()
   
+  // Sync initial state from route
+  syncFromRoute()
+  
   // Add event listener for diff functionality
   document.addEventListener('start-diff-view', handleStartDiff as EventListener)
 })
@@ -93,6 +99,45 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('start-diff-view', handleStartDiff as EventListener)
 })
+
+// Keep store selection in sync with the route
+watch(() => route.fullPath, () => {
+  syncFromRoute()
+})
+
+function syncFromRoute() {
+  const schemaName = route.params.schemaName as string | undefined
+  const fileName = route.params.fileName as string | undefined
+
+  if (!schemaName) {
+    // Clear selection when on root
+    appStore.setCurrentSchema(null)
+    return
+  }
+
+  const schema = appStore.schemas.find(s => s.name === schemaName)
+  if (schema) {
+    if (appStore.currentSchema?.name !== schema.name) {
+      appStore.setCurrentSchema(schema)
+    }
+
+    if (fileName) {
+      const file = schema.associatedFiles.find(f => f.name === fileName)
+      if (file) {
+        appStore.setCurrentJsonFile(file)
+      } else {
+        appStore.setCurrentJsonFile(null)
+      }
+    } else {
+      appStore.setCurrentJsonFile(null)
+    }
+  } else {
+    // If schema not found but schemas are loaded, navigate back to root
+    if (appStore.schemas.length > 0 && route.name !== 'Home') {
+      router.replace({ name: 'Home' })
+    }
+  }
+}
 </script>
 
 <style scoped>

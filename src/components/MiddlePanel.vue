@@ -86,6 +86,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore, type JsonFile } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import { useInlineRename } from '@/composables/useInlineRename'
@@ -93,6 +94,7 @@ import { useInlineRename } from '@/composables/useInlineRename'
 const appStore = useAppStore()
 const ui = useUIStore()
 const inlineRename = useInlineRename()
+const router = useRouter()
 
 // Track if we're confirming via Enter key
 let isConfirming = false
@@ -102,7 +104,11 @@ function selectFile(file: JsonFile) {
   if (inlineRename.isEditing(file)) {
     return
   }
-  appStore.setCurrentJsonFile(file)
+  if (appStore.currentSchema) {
+    router.push({ name: 'SchemaFile', params: { schemaName: appStore.currentSchema.name, fileName: file.name } })
+  } else {
+    appStore.setCurrentJsonFile(file)
+  }
 }
 
 function showContextMenu(event: MouseEvent, file: JsonFile) {
