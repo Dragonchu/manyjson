@@ -197,30 +197,41 @@ onUnmounted(() => {
 <style scoped>
 .context-menu {
   position: fixed;
-  background: var(--linear-bg-secondary);
-  border: 1px solid var(--linear-border);
-  border-radius: 8px;
-  box-shadow: var(--linear-shadow-lg);
-  padding: 4px 0;
-  min-width: 150px;
+  background: var(--apple-bg-primary);
+  border: 1px solid var(--apple-border);
+  border-radius: 12px; /* Apple HIG standard radius for menus */
+  box-shadow: var(--apple-shadow-lg);
+  padding: 6px 0;
+  min-width: 180px;
   z-index: 1000;
+  backdrop-filter: blur(20px); /* Apple-style backdrop blur */
 }
 
 .context-menu-item {
-  padding: 8px 16px;
-  font-size: 13px;
+  padding: 12px 16px; /* Increased padding for better touch target */
+  font-size: 14px; /* Improved readability */
   cursor: pointer;
-  transition: var(--linear-transition-fast);
-  color: var(--linear-text-primary);
+  transition: var(--apple-transition-fast);
+  color: var(--apple-text-primary);
+  min-height: 44px; /* Apple HIG minimum touch target */
+  display: flex;
+  align-items: center;
+  font-weight: 400;
 }
 
 .context-menu-item:hover {
-  background: var(--linear-surface-hover);
+  background: var(--apple-surface-hover);
+  border-radius: 6px;
+  margin: 0 6px;
+}
+
+.context-menu-item:active {
+  background: var(--apple-surface-active);
 }
 
 .context-menu-separator {
   height: 1px;
-  background: var(--linear-border);
-  margin: 4px 0;
+  background: var(--apple-border);
+  margin: 6px 12px;
 }
 </style>

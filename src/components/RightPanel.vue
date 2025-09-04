@@ -37,29 +37,29 @@
           </span>
         </div>
         <div class="panel-actions" v-if="ui.isEditingSchema && appStore.currentSchema">
-          <button class="action-btn primary" @click="saveSchemaChanges" title="Save Schema">
+          <button class="apple-btn filled small icon-only" @click="saveSchemaChanges" title="Save Schema">
             <SaveIcon />
           </button>
-          <button class="action-btn" @click="cancelSchemaEdit" title="Cancel Edit">
+          <button class="apple-btn bordered small icon-only" @click="cancelSchemaEdit" title="Cancel Edit">
             <CancelIcon />
           </button>
         </div>
         <div class="panel-actions" v-else-if="ui.isViewingSchema && appStore.currentSchema">
-          <button class="action-btn" @click="copySchemaToClipboard" title="Copy Schema">
+          <button class="apple-btn tinted small icon-only" @click="copySchemaToClipboard" title="Copy Schema">
             <CopyIcon />
           </button>
         </div>
         <div class="panel-actions" v-else-if="appStore.currentJsonFile">
-          <button class="action-btn" @click="copyToClipboard" title="Copy JSON">
+          <button class="apple-btn tinted small icon-only" @click="copyToClipboard" title="Copy JSON">
             <CopyIcon />
           </button>
-          <button class="action-btn" @click="toggleEditMode" title="Edit JSON" v-if="!ui.isEditMode">
+          <button class="apple-btn bordered small icon-only" @click="toggleEditMode" title="Edit JSON" v-if="!ui.isEditMode">
             <EditIcon />
           </button>
-          <button class="action-btn primary" @click="saveChanges" title="Save Changes" v-if="ui.isEditMode">
+          <button class="apple-btn filled small icon-only" @click="saveChanges" title="Save Changes" v-if="ui.isEditMode">
             <SaveIcon />
           </button>
-          <button class="action-btn" @click="cancelEdit" title="Cancel Edit" v-if="ui.isEditMode">
+          <button class="apple-btn plain small icon-only" @click="cancelEdit" title="Cancel Edit" v-if="ui.isEditMode">
             <CancelIcon />
           </button>
         </div>

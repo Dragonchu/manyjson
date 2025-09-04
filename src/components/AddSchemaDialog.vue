@@ -3,7 +3,7 @@
     <div class="dialog" @click.stop>
       <div class="dialog-header">
         <h3>Add New Schema</h3>
-        <button class="close-btn" @click="closeDialog">×</button>
+        <button class="apple-btn plain small icon-only" @click="closeDialog">×</button>
       </div>
       
       <div class="dialog-content">
@@ -14,7 +14,7 @@
             v-model="schemaName"
             type="text"
             placeholder="Enter schema name (e.g., user-schema)"
-            class="form-input"
+            class="apple-input"
             :class="{ error: nameError }"
             :disabled="isSubmitting"
           />
@@ -27,7 +27,7 @@
             <button 
               v-for="template in templates" 
               :key="template.name"
-              class="template-btn"
+              class="apple-btn bordered small"
               :disabled="isSubmitting"
               @click="useTemplate(template)"
             >
@@ -38,7 +38,7 @@
             id="schemaContent"
             v-model="schemaContentText"
             placeholder="Enter JSON Schema content..."
-            class="form-textarea"
+            class="apple-textarea"
             :class="{ error: contentError }"
             :disabled="isSubmitting"
             rows="15"
@@ -48,9 +48,10 @@
       </div>
       
       <div class="dialog-footer">
-        <button class="btn btn-secondary" @click="closeDialog" :disabled="isSubmitting">Cancel</button>
-        <button class="btn btn-primary" @click="handleSubmit" :disabled="isSubmitting || !canSubmit">
-          {{ isSubmitting ? 'Creating...' : 'Create Schema' }}
+        <button class="apple-btn bordered" @click="closeDialog" :disabled="isSubmitting">Cancel</button>
+        <button class="apple-btn filled" @click="handleSubmit" :disabled="isSubmitting || !canSubmit">
+          <div v-if="isSubmitting" class="apple-activity-indicator"></div>
+          <span>{{ isSubmitting ? 'Creating...' : 'Create Schema' }}</span>
         </button>
       </div>
     </div>
@@ -379,31 +380,7 @@ defineExpose({
   font-weight: 600;
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--linear-text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: var(--linear-transition-fast);
-}
-
-.close-btn:hover:not(:disabled) {
-  background: var(--linear-surface-hover);
-  color: var(--linear-text-primary);
-}
-
-.close-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Close button now uses apple-btn system */
 
 .dialog-content {
   padding: 20px;
@@ -419,48 +396,11 @@ defineExpose({
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: var(--linear-text-primary);
+  color: var(--apple-text-primary);
   font-size: 14px;
 }
 
-.form-input,
-.form-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--linear-border, rgba(255, 255, 255, 0.2));
-  border-radius: 6px;
-  background: var(--apple-bg-primary);
-  color: var(--linear-text-primary, rgba(255, 255, 255, 0.95));
-  font-size: 14px;
-  font-family: inherit;
-  transition: var(--linear-transition-fast, all 0.15s ease);
-  box-sizing: border-box;
-  min-height: 40px;
-}
-
-.form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: var(--linear-accent);
-  box-shadow: 0 0 0 2px rgba(var(--linear-accent-rgb), 0.2);
-}
-
-.form-input.error,
-.form-textarea.error {
-  border-color: var(--linear-error);
-}
-
-.form-input:disabled,
-.form-textarea:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 120px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-}
+/* Form controls now use apple-input and apple-textarea classes from main CSS */
 
 .template-buttons {
   display: flex;
@@ -469,27 +409,7 @@ defineExpose({
   flex-wrap: wrap;
 }
 
-.template-btn {
-  padding: 6px 12px;
-  border: 1px solid var(--linear-border);
-  border-radius: 4px;
-  background: var(--linear-bg-secondary);
-  color: var(--linear-text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  transition: var(--linear-transition-fast);
-}
-
-.template-btn:hover:not(:disabled) {
-  background: var(--linear-surface-hover);
-  color: var(--linear-text-primary);
-  border-color: var(--linear-accent);
-}
-
-.template-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Template buttons now use apple-btn bordered small classes */
 
 .error-message {
   color: var(--linear-error);
@@ -507,38 +427,5 @@ defineExpose({
   backdrop-filter: blur(10px);
 }
 
-.btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--linear-transition-fast);
-  border: none;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: var(--linear-surface);
-  color: var(--linear-text-secondary);
-  border: 1px solid var(--linear-border);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--linear-surface-hover);
-  color: var(--linear-text-primary);
-}
-
-.btn-primary {
-  background: var(--linear-accent);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--linear-accent-hover);
-}
+/* Legacy button styles replaced with apple-btn system */
 </style>

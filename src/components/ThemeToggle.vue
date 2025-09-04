@@ -1,10 +1,10 @@
 <template>
   <div class="theme-toggle">
     <div class="theme-status">{{ getThemeStatus() }}</div>
-    <div class="theme-buttons">
+    <div class="apple-segmented-control theme-buttons">
       <button 
-      class="theme-btn"
-      :class="{ active: uiStore.theme === 'light' }"
+      class="apple-segment"
+      :class="{ selected: uiStore.theme === 'light' }"
       @click="setTheme('light')"
       title="Light theme"
     >
@@ -22,8 +22,8 @@
     </button>
     
     <button 
-      class="theme-btn"
-      :class="{ active: uiStore.theme === 'dark' }"
+      class="apple-segment"
+      :class="{ selected: uiStore.theme === 'dark' }"
       @click="setTheme('dark')"
       title="Dark theme"
     >
@@ -33,8 +33,8 @@
     </button>
     
     <button 
-      class="theme-btn"
-      :class="{ active: uiStore.theme === 'auto' }"
+      class="apple-segment"
+      :class="{ selected: uiStore.theme === 'auto' }"
       @click="setTheme('auto')"
       title="Auto theme (system preference)"
     >
@@ -79,52 +79,5 @@ function getThemeStatus() {
   font-weight: 500;
 }
 
-.theme-buttons {
-  display: flex;
-  background: var(--apple-surface);
-  border: 1px solid var(--apple-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.theme-btn {
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  color: var(--apple-text-secondary);
-  cursor: pointer;
-  transition: var(--apple-transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.theme-btn:hover {
-  background: var(--apple-surface-hover);
-  color: var(--apple-text-primary);
-}
-
-.theme-btn.active {
-  background: var(--accent-primary);
-  color: white;
-}
-
-.theme-btn.active:hover {
-  background: var(--accent-primary-hover);
-}
-
-.theme-btn:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 1px;
-  background: var(--apple-border);
-}
-
-.theme-btn.active:not(:last-child)::after {
-  display: none;
-}
+/* Theme toggle uses apple-segmented-control from main CSS */
 </style>

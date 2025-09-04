@@ -5,7 +5,7 @@
         <div class="middle-panel-title">Associated JSON Files</div>
         <button 
           v-if="appStore.currentSchema" 
-          class="btn-add"
+          class="apple-btn tinted small"
           @click="openAddFilePopup"
           title="Add JSON file"
         >
@@ -44,7 +44,7 @@
         <div v-else class="json-file-name-edit">
           <input
             type="text"
-            class="inline-rename-input"
+            class="apple-input inline-rename-input"
             :class="{ 'invalid-input': !inlineRename.isValidName.value }"
             :value="inlineRename.editingName.value"
             @input="inlineRename.updateEditingName(($event.target as HTMLInputElement).value)"
@@ -216,30 +216,7 @@ onUnmounted(() => {
   color: var(--linear-text-primary);
 }
 
-.btn-add {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--linear-accent);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--linear-transition-fast);
-}
-
-.btn-add:hover {
-  background: var(--accent-primary-hover);
-  transform: translateY(-1px);
-}
-
-.btn-add svg {
-  width: 14px;
-  height: 14px;
-}
+/* Button styles moved to apple-btn system in main CSS */
 
 .schema-info {
   font-size: 12px;
@@ -253,34 +230,42 @@ onUnmounted(() => {
 }
 
 .json-file-card {
-  background: var(--linear-surface);
-  border: 1px solid var(--linear-border);
-  border-radius: 8px;
-  padding: 12px;
+  background: var(--apple-bg-primary);
+  border: 1px solid var(--apple-border);
+  border-radius: 12px; /* Apple HIG standard radius */
+  padding: 16px;
   margin-bottom: 8px;
   cursor: pointer;
-  transition: var(--linear-transition-fast);
+  transition: var(--apple-transition-fast);
+  min-height: 44px; /* Apple HIG minimum touch target */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: var(--apple-shadow-sm);
 }
 
 .json-file-card:hover {
-  background: var(--linear-surface-hover);
-  border-color: var(--linear-border-hover);
+  background: var(--apple-surface-hover);
+  border-color: var(--apple-border-hover);
+  box-shadow: var(--apple-shadow-md);
+  transform: translateY(-1px);
 }
 
 .json-file-card.selected {
-  border-color: var(--linear-accent);
-  background: var(--linear-surface-active);
+  border-color: var(--accent-primary);
+  background: rgba(var(--linear-accent-rgb), 0.1);
+  box-shadow: var(--apple-shadow-md);
 }
 
 .json-file-card.invalid {
-  border-color: var(--linear-error);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: var(--accent-error);
+  background: rgba(255, 59, 48, 0.05);
 }
 
 .json-file-name {
-  font-size: 13px;
+  font-size: 14px; /* Improved readability */
   font-weight: 500;
-  color: var(--linear-text-primary);
+  color: var(--apple-text-primary);
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
@@ -320,18 +305,21 @@ onUnmounted(() => {
   transition: border-color 0.15s ease;
 }
 
-.inline-rename-input:focus {
-  border-color: var(--linear-accent);
-  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+/* Inline input inherits apple-input styling with overrides */
+.inline-rename-input {
+  min-height: 32px; /* Smaller for inline editing */
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .inline-rename-input.invalid-input {
-  border-color: var(--linear-error);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: var(--accent-error);
+  background: rgba(255, 59, 48, 0.05);
 }
 
 .inline-rename-input.invalid-input:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.2);
 }
 
 .validation-error {
@@ -339,17 +327,18 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 4px;
-  padding: 4px 8px;
-  background: var(--linear-error);
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--accent-error);
   color: white;
-  font-size: 11px;
-  border-radius: 4px;
+  font-size: 12px;
+  border-radius: 8px; /* Apple HIG standard radius */
   z-index: 10;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--apple-shadow-md);
+  font-weight: 500;
 }
 
 /* Ensure the card has enough space for validation error */
