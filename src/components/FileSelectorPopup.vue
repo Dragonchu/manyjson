@@ -114,9 +114,8 @@ watch(isVisible, (newValue) => {
 })
 
 const allProjectFiles = computed(() => {
-  return appStore.schemas.flatMap(schema => 
-    appStore.jsonFiles.filter(file => file.schemaPath === schema.path)
-  )
+  // Get all associated files from all schemas
+  return appStore.schemas.flatMap(schema => schema.associatedFiles || [])
 })
 
 const canCompare = computed(() => {
@@ -135,7 +134,7 @@ const canCompare = computed(() => {
 })
 
 function getSchemaFiles(schema: any) {
-  return appStore.jsonFiles.filter(file => file.schemaPath === schema.path)
+  return schema.associatedFiles || []
 }
 
 function selectFile(file: JsonFile) {
@@ -157,8 +156,6 @@ async function browseForFile() {
     const result = await window.electronAPI.showOpenDialog({
       title: 'Select file to compare',
       filters: [
-        { name: 'JSON Files', extensions: ['json'] },
-        { name: 'Text Files', extensions: ['txt', 'md', 'yaml', 'yml', 'xml', 'csv'] },
         { name: 'All Files', extensions: ['*'] }
       ],
       properties: ['openFile']
@@ -203,7 +200,7 @@ async function browseForFile() {
           return
         }
         
-        // Try to read as text file first
+        // Read file content
         const textResult = await window.electronAPI.readTextFile(filePath)
         if (!textResult.success) {
           ui.showStatus('Failed to read selected file', 'error')
@@ -213,11 +210,12 @@ async function browseForFile() {
         const fileName = filePath.split(/[/\\]/).pop() || 'Unknown'
         let content = textResult.content
         
-        // Try to parse as JSON if possible, otherwise use as plain text
+        // Try to parse as JSON if possible, otherwise keep as plain text
         try {
           content = JSON.parse(textResult.content!)
         } catch {
-          // Not valid JSON, keep as string for text comparison
+          // Keep as string for text comparison - this is perfectly fine
+          content = textResult.content
         }
         
         externalFile.value = {
@@ -351,13 +349,13 @@ onUnmounted(() => {
 }
 
 .popup-container {
-  background: var(--linear-surface);
+  background: var(--linear-bg-primary);
   border: 1px solid var(--linear-border);
   border-radius: 12px;
   width: 600px;
   max-height: 70vh;
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
 }
 
 .popup-header {
@@ -366,7 +364,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--linear-bg-primary);
+  background: var(--linear-bg-secondary);
 }
 
 .popup-header h3 {
@@ -575,7 +573,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: var(--linear-bg-primary);
+  background: var(--linear-bg-secondary);
 }
 
 .btn {
