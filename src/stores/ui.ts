@@ -11,6 +11,10 @@ export const useUIStore = defineStore('ui', () => {
   const isEditingSchema = ref(false)
   const isDiffMode = ref(false)
 
+  // Layout - sidebar
+  const leftSidebarWidth = ref<number>(300)
+  const leftSidebarCollapsed = ref<boolean>(false)
+
   // Theme management
   const theme = ref<ThemeType>('auto')
   const prefersDark = ref(false)
@@ -102,6 +106,26 @@ export const useUIStore = defineStore('ui', () => {
     }
   }
 
+  // Layout persistence keys
+  const LS_LEFT_WIDTH_KEY = 'left-sidebar-width'
+  const LS_LEFT_COLLAPSED_KEY = 'left-sidebar-collapsed'
+
+  function setLeftSidebarWidth(widthPx: number) {
+    // Clamp to reasonable bounds (match CSS tokens: 250-400)
+    const clamped = Math.min(400, Math.max(250, Math.round(widthPx)))
+    leftSidebarWidth.value = clamped
+    try {
+      localStorage.setItem(LS_LEFT_WIDTH_KEY, String(clamped))
+    } catch {}
+  }
+
+  function setLeftSidebarCollapsed(collapsed: boolean) {
+    leftSidebarCollapsed.value = collapsed
+    try {
+      localStorage.setItem(LS_LEFT_COLLAPSED_KEY, collapsed ? '1' : '0')
+    } catch {}
+  }
+
   function applyTheme() {
     const root = document.documentElement
     const isDark = currentTheme.value === 'dark'
@@ -136,6 +160,21 @@ export const useUIStore = defineStore('ui', () => {
     applyTheme()
   }
 
+  function initializeLayout() {
+    // Load saved sidebar width
+    const savedWidth = Number(localStorage.getItem(LS_LEFT_WIDTH_KEY))
+    if (!Number.isNaN(savedWidth) && savedWidth > 0) {
+      // Clamp just in case
+      leftSidebarWidth.value = Math.min(400, Math.max(250, Math.round(savedWidth)))
+    }
+
+    // Load collapsed state
+    const savedCollapsed = localStorage.getItem(LS_LEFT_COLLAPSED_KEY)
+    if (savedCollapsed === '1' || savedCollapsed === '0') {
+      leftSidebarCollapsed.value = savedCollapsed === '1'
+    }
+  }
+
   // Watch for theme changes
   watch(currentTheme, () => {
     applyTheme()
@@ -162,6 +201,8 @@ export const useUIStore = defineStore('ui', () => {
     isViewingSchema,
     isEditingSchema,
     isDiffMode,
+    leftSidebarWidth,
+    leftSidebarCollapsed,
     statusMessage,
     statusType,
     diffSourceFile,
@@ -176,7 +217,10 @@ export const useUIStore = defineStore('ui', () => {
     showStatus,
     setTheme,
     toggleTheme,
+    setLeftSidebarWidth,
+    setLeftSidebarCollapsed,
     initializeTheme,
+    initializeLayout,
     initializeKeyboardShortcuts,
   }
 })

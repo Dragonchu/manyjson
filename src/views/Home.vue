@@ -4,7 +4,7 @@
     <AppSidebar />
     
     <!-- Resize Handle -->
-    <div class="resize-handle" id="leftResize"></div>
+    <div class="resize-handle" id="leftResize" @mousedown="startLeftResize" @dblclick="toggleLeftCollapse"></div>
     
     <!-- Middle Panel - JSON Files List -->
     <MiddlePanel />
@@ -39,6 +39,38 @@ import { useUIStore } from '@/stores/ui'
 
 const appStore = useAppStore()
 const ui = useUIStore()
+
+let isResizingLeft = false
+let startX = 0
+let startWidth = 0
+
+function startLeftResize(event: MouseEvent) {
+  isResizingLeft = true
+  startX = event.clientX
+  startWidth = ui.leftSidebarWidth
+  document.addEventListener('mousemove', handleLeftResize)
+  document.addEventListener('mouseup', stopLeftResize)
+}
+
+function handleLeftResize(event: MouseEvent) {
+  if (!isResizingLeft) return
+  const delta = event.clientX - startX
+  if (ui.leftSidebarCollapsed) {
+    ui.setLeftSidebarCollapsed(false)
+  }
+  ui.setLeftSidebarWidth(startWidth + delta)
+}
+
+function stopLeftResize() {
+  if (!isResizingLeft) return
+  isResizingLeft = false
+  document.removeEventListener('mousemove', handleLeftResize)
+  document.removeEventListener('mouseup', stopLeftResize)
+}
+
+function toggleLeftCollapse() {
+  ui.setLeftSidebarCollapsed(!ui.leftSidebarCollapsed)
+}
 
 // Handle diff view start event
 const handleStartDiff = (event: CustomEvent) => {

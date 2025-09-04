@@ -32,4 +32,5 @@ app.mount('#app')
 // Initialize theme and keyboard shortcuts after mounting
 const uiStore = useUIStore()
 uiStore.initializeTheme()
+uiStore.initializeLayout()
 uiStore.initializeKeyboardShortcuts()

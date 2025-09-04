@@ -1,8 +1,14 @@
 <template>
-  <div class="left-panel">
+  <div class="left-panel" :style="leftPanelStyle" :class="{ collapsed: ui.leftSidebarCollapsed }">
     <div class="left-panel-header">
       <div class="left-panel-title">JSON Schema Manager</div>
       <div class="header-controls">
+        <div class="collapse-row">
+          <button class="apple-btn plain small" @click="toggleCollapsed" :title="ui.leftSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+            <span v-if="ui.leftSidebarCollapsed">⟩</span>
+            <span v-else>⟨</span>
+          </button>
+        </div>
         <ThemeToggle />
         <div class="schema-actions">
           <button class="apple-btn tinted small" @click="handleAddSchema">Add</button>
@@ -39,13 +45,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
+import { useUIStore } from '@/stores/ui'
 import AddSchemaDialog from './AddSchemaDialog.vue'
 import ThemeToggle from './ThemeToggle.vue'
 
 const appStore = useAppStore()
+const ui = useUIStore()
 const addSchemaDialog = ref<InstanceType<typeof AddSchemaDialog>>()
+
+const leftPanelStyle = computed(() => {
+  if (ui.leftSidebarCollapsed) {
+    return { width: '48px', minWidth: '48px' }
+  }
+  return { width: `${ui.leftSidebarWidth}px`, minWidth: '250px', maxWidth: '400px' }
+})
 
 function selectSchema(schema: SchemaInfo) {
   appStore.setCurrentSchema(schema)
@@ -65,6 +80,10 @@ function showContextMenu(event: MouseEvent, schema: SchemaInfo) {
     detail: { event, schema, type: 'schema' }
   })
   document.dispatchEvent(contextMenuEvent)
+}
+
+function toggleCollapsed() {
+  ui.setLeftSidebarCollapsed(!ui.leftSidebarCollapsed)
 }
 </script>
 
@@ -98,6 +117,27 @@ function showContextMenu(event: MouseEvent, schema: SchemaInfo) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md); /* 16px */
+}
+
+.collapse-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Collapsed state styling */
+.left-panel.collapsed .left-panel-title,
+.left-panel.collapsed .schema-actions,
+.left-panel.collapsed .schema-tree,
+.left-panel.collapsed :deep(.theme-toggle) {
+  display: none;
+}
+
+.left-panel.collapsed .left-panel-header {
+  padding: var(--spacing-md);
+}
+
+.left-panel.collapsed .collapse-row {
+  justify-content: center;
 }
 
 .schema-actions {
