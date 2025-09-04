@@ -19,6 +19,7 @@
   --linear-success: #10b981;
   --linear-warning: #f59e0b;
   --linear-error: #ef4444;
+  --linear-info: #3b82f6;
   
   /* Gradients */
   --linear-gradient-primary: linear-gradient(135deg, #0a0a0a 0%, #111111 50%, #0f0f0f 100%);

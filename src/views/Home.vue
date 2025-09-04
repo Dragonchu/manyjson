@@ -20,6 +20,9 @@
     
     <!-- Add File Popup -->
     <AddFilePopup />
+    
+    <!-- File Selector Popup for Diff -->
+    <FileSelectorPopup />
   </div>
 </template>
 
@@ -30,6 +33,7 @@ import MiddlePanel from '@/components/MiddlePanel.vue'
 import RightPanel from '@/components/RightPanel.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import AddFilePopup from '@/components/AddFilePopup.vue'
+import FileSelectorPopup from '@/components/FileSelectorPopup.vue'
 import { useAppStore } from '@/stores/app'
 
 const appStore = useAppStore()

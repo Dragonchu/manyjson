@@ -20,6 +20,8 @@
       <div class="context-menu-item" @click="handleViewFile">View File</div>
       <div class="context-menu-item" @click="handleEditFile">Edit File</div>
       <div class="context-menu-separator"></div>
+      <div class="context-menu-item" @click="handleDiffWith">Diff with...</div>
+      <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleRenameFile">Rename File</div>
       <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleDeleteFile">Delete File</div>
@@ -141,6 +143,17 @@ async function handleCopyFile() {
     }
   } else {
     console.log('No current file selected')
+  }
+  hideContextMenu()
+}
+
+function handleDiffWith() {
+  if (currentFile.value) {
+    // Show file selector popup for diff comparison
+    const diffEvent = new CustomEvent('show-file-selector', {
+      detail: { sourceFile: currentFile.value }
+    })
+    document.dispatchEvent(diffEvent)
   }
   hideContextMenu()
 }

@@ -1,0 +1,20 @@
+{
+  "id": "PRD-123456",
+  "title": "Wireless Bluetooth Headphones Pro",
+  "description": "Premium wireless headphones with active noise cancellation and enhanced bass",
+  "price": 249.99,
+  "currency": "USD",
+  "category": "electronics",
+  "inStock": false,
+  "specifications": {
+    "brand": "TechCorp",
+    "model": "WH-1000XM5",
+    "color": "Silver",
+    "batteryLife": "40 hours",
+    "features": ["noise-cancellation", "touch-controls", "voice-assistant"]
+  },
+  "discount": {
+    "percentage": 10,
+    "validUntil": "2024-12-31"
+  }
+}
