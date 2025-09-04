@@ -351,15 +351,15 @@ onUnmounted(() => {
 .popup-container {
   background: var(--linear-bg-primary);
   border: 1px solid var(--linear-border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg); /* 12px */
   width: 600px;
   max-height: 70vh;
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--apple-shadow-lg);
 }
 
 .popup-header {
-  padding: 20px;
+  padding: var(--spacing-xl); /* 24px */
   border-bottom: 1px solid var(--linear-border);
   display: flex;
   justify-content: space-between;
@@ -369,51 +369,54 @@ onUnmounted(() => {
 
 .popup-header h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-md); /* 16px */
+  font-weight: var(--font-semibold); /* 600 */
   color: var(--linear-text-primary);
+  line-height: var(--leading-tight);
 }
 
 /* Close button now uses apple-btn system */
 
 .popup-content {
-  padding: 20px;
+  padding: var(--spacing-xl); /* 24px */
   max-height: 50vh;
   overflow-y: auto;
 }
 
 .source-file-info {
-  margin-bottom: 20px;
-  padding: 12px;
+  margin-bottom: var(--spacing-lg); /* 20px */
+  padding: var(--spacing-md); /* 16px */
   background: rgba(99, 102, 241, 0.1);
   border: 1px solid var(--linear-accent);
-  border-radius: 6px;
+  border-radius: var(--radius-md); /* 8px */
   color: var(--linear-text-primary);
-  font-size: 14px;
+  font-size: var(--text-base); /* 14px */
+  line-height: var(--leading-normal);
 }
 
 .file-selection-tabs {
   display: flex;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-lg); /* 20px */
   border-bottom: 1px solid var(--linear-border);
 }
 
 /* Tab buttons now use apple-segmented-control system */
 
 .schema-section {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-lg); /* 20px */
 }
 
 .schema-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  font-size: 14px;
-  font-weight: 600;
+  gap: var(--spacing-sm); /* 8px */
+  padding: var(--spacing-sm) 0; /* 8px 0 */
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-semibold); /* 600 */
   color: var(--linear-text-primary);
   border-bottom: 1px solid var(--linear-border);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm); /* 8px */
+  line-height: var(--leading-normal);
 }
 
 .schema-name {
@@ -422,15 +425,15 @@ onUnmounted(() => {
 
 .file-count {
   color: var(--linear-text-secondary);
-  font-weight: 400;
-  font-size: 12px;
+  font-weight: var(--font-normal); /* 400 */
+  font-size: var(--text-sm); /* 12px */
 }
 
 .file-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-left: 12px;
+  gap: var(--spacing-xs); /* 4px */
+  margin-left: var(--spacing-md); /* 16px */
 }
 
 /* File items now use apple-list-item system with custom overrides */

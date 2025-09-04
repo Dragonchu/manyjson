@@ -312,54 +312,57 @@ async function copySchemaToClipboard() {
 }
 
 .right-panel-header {
-  padding: 16px;
+  padding: var(--spacing-lg); /* 20px - Apple standard medium */
   border-bottom: 1px solid var(--linear-border);
   background: var(--linear-surface);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: var(--touch-target-md); /* 44px */
 }
 
 .right-panel-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-semibold); /* 600 */
   color: var(--linear-text-primary);
+  line-height: var(--leading-normal);
 }
 
 .right-panel-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md); /* 16px */
 }
 
 .validation-status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: var(--spacing-sm); /* 8px */
+  font-size: var(--text-sm); /* 12px */
+  line-height: var(--leading-normal);
 }
 
 .panel-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm); /* 8px */
 }
 
 .json-content {
   flex: 1;
   overflow: auto;
-  padding: 16px;
+  padding: var(--spacing-lg); /* 20px */
   font-family: var(--linear-font-mono);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--text-sm); /* 12px */
+  line-height: var(--leading-relaxed); /* 1.6 */
   white-space: pre-wrap;
 }
 
 .json-viewer {
   background: var(--linear-surface);
   border: 1px solid var(--linear-border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: var(--radius-md); /* 8px */
+  padding: var(--spacing-lg); /* 20px */
   height: 100%;
   overflow: auto;
 }
@@ -369,11 +372,11 @@ async function copySchemaToClipboard() {
   height: 100%;
   background: var(--linear-surface);
   border: 1px solid var(--linear-border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: var(--radius-md); /* 8px */
+  padding: var(--spacing-lg); /* 20px */
   font-family: var(--linear-font-mono);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--text-sm); /* 12px */
+  line-height: var(--leading-relaxed); /* 1.6 */
   color: var(--linear-text-primary);
   resize: none;
   outline: none;

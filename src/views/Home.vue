@@ -68,26 +68,62 @@ onUnmounted(() => {
   display: flex;
   height: 100vh;
   width: 100vw;
+  background: var(--apple-bg-primary);
+  font-family: var(--apple-font-primary);
+  gap: 0; /* No gap, panels handle their own borders */
 }
 
-/* Resize Handles */
+/* Resize Handles - Apple HIG compliant */
 .resize-handle {
-  width: 4px;
+  width: var(--spacing-xs); /* 4px - follows 8pt grid */
   background: transparent;
   cursor: col-resize;
   position: relative;
+  transition: var(--apple-transition-fast);
+  z-index: 10;
 }
 
 .resize-handle:hover {
   background: var(--linear-accent);
+  opacity: 0.8;
 }
 
+.resize-handle:active {
+  background: var(--linear-accent);
+  opacity: 1;
+}
+
+/* Expand hover area for easier interaction */
 .resize-handle::after {
   content: '';
   position: absolute;
   top: 0;
-  left: -2px;
-  right: -2px;
+  left: calc(-1 * var(--spacing-xs)); /* -4px */
+  right: calc(-1 * var(--spacing-xs)); /* -4px */
   bottom: 0;
+}
+
+/* Enhanced visual feedback for resize handles */
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: var(--spacing-6); /* 24px */
+  background: var(--apple-border);
+  border-radius: 1px;
+  opacity: 0;
+  transition: var(--apple-transition-fast);
+}
+
+.resize-handle:hover::before {
+  opacity: 0.6;
+}
+
+/* Ensure panels maintain proper content hierarchy */
+.app-container > * {
+  border-radius: 0; /* Panels should not have rounded corners at container level */
 }
 </style>

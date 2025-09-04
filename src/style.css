@@ -1,8 +1,19 @@
-/* Apple HIG Theme System - Light & Dark Mode Support
+/* Apple HIG Design System - Layout, Typography & Color
  * 
- * This theme system implements Apple's Human Interface Guidelines (HIG) color tokens
- * with comprehensive light and dark mode support. Features include:
+ * This design system implements Apple's Human Interface Guidelines (HIG) with:
  * 
+ * LAYOUT SYSTEM:
+ * - 8pt grid system for consistent spacing
+ * - Apple's 16/20/24pt spacing standards
+ * - Responsive breakpoints for different screen sizes
+ * - Proper content hierarchy with visual groupings
+ * 
+ * TYPOGRAPHY:
+ * - SF Pro Display/Text equivalent font stack
+ * - Proper type scale with consistent line heights
+ * - Semantic heading and body text styles
+ * 
+ * COLORS:
  * - Apple system colors with proper contrast ratios (WCAG AA compliant)
  * - Semantic color tokens for consistent theming
  * - Automatic system preference detection
@@ -16,8 +27,10 @@
  * - Keyboard: Cmd/Ctrl + Shift + T
  * - Programmatic: useUIStore().setTheme('light'|'dark'|'auto')
  * 
- * Color usage guidelines:
+ * Usage guidelines:
+ * - Use spacing tokens (--space-*) for consistent 8pt grid alignment
  * - Use semantic tokens (--accent-primary) over direct colors (--apple-blue)
+ * - Use typography scale (--text-*) for consistent text sizing
  * - Apple colors adapt automatically between light/dark themes
  * - Legacy --linear-* variables are mapped for backward compatibility
  */
@@ -81,6 +94,71 @@
   /* Animation */
   --apple-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --apple-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* 8pt Grid System - Apple HIG Spacing Standards */
+  --space-1: 4px;    /* 0.5 units */
+  --space-2: 8px;    /* 1 unit - base grid */
+  --space-3: 12px;   /* 1.5 units */
+  --space-4: 16px;   /* 2 units - Apple standard small */
+  --space-5: 20px;   /* 2.5 units - Apple standard medium */
+  --space-6: 24px;   /* 3 units - Apple standard large */
+  --space-8: 32px;   /* 4 units */
+  --space-10: 40px;  /* 5 units */
+  --space-12: 48px;  /* 6 units */
+  --space-16: 64px;  /* 8 units */
+  --space-20: 80px;  /* 10 units */
+  --space-24: 96px;  /* 12 units */
+  
+  /* Apple HIG Component Spacing */
+  --spacing-xs: var(--space-1);     /* 4px - Tight spacing */
+  --spacing-sm: var(--space-2);     /* 8px - Small spacing */
+  --spacing-md: var(--space-4);     /* 16px - Default spacing */
+  --spacing-lg: var(--space-5);     /* 20px - Medium spacing */
+  --spacing-xl: var(--space-6);     /* 24px - Large spacing */
+  --spacing-2xl: var(--space-8);    /* 32px - Extra large spacing */
+  --spacing-3xl: var(--space-12);   /* 48px - Section spacing */
+  
+  /* Apple HIG Layout Dimensions */
+  --panel-width-sm: 250px;          /* Minimum panel width */
+  --panel-width-md: 300px;          /* Default panel width */
+  --panel-width-lg: 350px;          /* Large panel width */
+  --panel-width-xl: 400px;          /* Maximum panel width */
+  
+  /* Touch Target Sizes (Apple HIG) */
+  --touch-target-sm: 32px;          /* Small touch target */
+  --touch-target-md: 44px;          /* Standard touch target */
+  --touch-target-lg: 48px;          /* Large touch target (mobile) */
+  --touch-target-xl: 52px;          /* Extra large touch target */
+  
+  /* Border Radius (Apple HIG) */
+  --radius-sm: 4px;                 /* Small radius */
+  --radius-md: 8px;                 /* Standard radius */
+  --radius-lg: 12px;                /* Large radius (cards) */
+  --radius-xl: 16px;                /* Extra large radius */
+  --radius-2xl: 20px;               /* Modal/popup radius */
+  
+  /* Typography Scale - Apple HIG */
+  --text-xs: 11px;                  /* Extra small text */
+  --text-sm: 12px;                  /* Small text */
+  --text-base: 14px;                /* Base text size */
+  --text-md: 16px;                  /* Medium text */
+  --text-lg: 18px;                  /* Large text */
+  --text-xl: 20px;                  /* Extra large text */
+  --text-2xl: 24px;                 /* Heading text */
+  --text-3xl: 28px;                 /* Large heading */
+  
+  /* Line Heights - Apple HIG */
+  --leading-tight: 1.2;             /* Tight line height */
+  --leading-normal: 1.4;            /* Normal line height */
+  --leading-relaxed: 1.6;           /* Relaxed line height */
+  --leading-loose: 1.8;             /* Loose line height */
+  
+  /* Font Weights - Apple HIG */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
 }
 
 /* Dark Theme Overrides */
@@ -177,21 +255,279 @@ body {
   color: var(--apple-text-primary);
   height: 100vh;
   overflow: hidden;
-  line-height: 1.6;
+  line-height: var(--leading-relaxed); /* 1.6 */
+  font-size: var(--text-base); /* 14px */
   transition: var(--apple-transition);
 }
 
-/* Legacy Utility Classes - Deprecated, use .apple-btn instead */
+/* Apple HIG Typography Scale */
+.text-xs { font-size: var(--text-xs); line-height: var(--leading-normal); }
+.text-sm { font-size: var(--text-sm); line-height: var(--leading-normal); }
+.text-base { font-size: var(--text-base); line-height: var(--leading-normal); }
+.text-md { font-size: var(--text-md); line-height: var(--leading-normal); }
+.text-lg { font-size: var(--text-lg); line-height: var(--leading-normal); }
+.text-xl { font-size: var(--text-xl); line-height: var(--leading-tight); }
+.text-2xl { font-size: var(--text-2xl); line-height: var(--leading-tight); }
+.text-3xl { font-size: var(--text-3xl); line-height: var(--leading-tight); }
+
+/* Font Weight Utilities */
+.font-light { font-weight: var(--font-light); }
+.font-normal { font-weight: var(--font-normal); }
+.font-medium { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+.font-bold { font-weight: var(--font-bold); }
+
+/* Line Height Utilities */
+.leading-tight { line-height: var(--leading-tight); }
+.leading-normal { line-height: var(--leading-normal); }
+.leading-relaxed { line-height: var(--leading-relaxed); }
+.leading-loose { line-height: var(--leading-loose); }
+
+/* 8pt Grid Spacing Utilities */
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-3 { margin: var(--space-3); }
+.m-4 { margin: var(--space-4); }
+.m-5 { margin: var(--space-5); }
+.m-6 { margin: var(--space-6); }
+.m-8 { margin: var(--space-8); }
+.m-10 { margin: var(--space-10); }
+.m-12 { margin: var(--space-12); }
+
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); }
+.mt-6 { margin-top: var(--space-6); }
+
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-5 { margin-bottom: var(--space-5); }
+.mb-6 { margin-bottom: var(--space-6); }
+
+.ml-1 { margin-left: var(--space-1); }
+.ml-2 { margin-left: var(--space-2); }
+.ml-3 { margin-left: var(--space-3); }
+.ml-4 { margin-left: var(--space-4); }
+.ml-5 { margin-left: var(--space-5); }
+.ml-6 { margin-left: var(--space-6); }
+
+.mr-1 { margin-right: var(--space-1); }
+.mr-2 { margin-right: var(--space-2); }
+.mr-3 { margin-right: var(--space-3); }
+.mr-4 { margin-right: var(--space-4); }
+.mr-5 { margin-right: var(--space-5); }
+.mr-6 { margin-right: var(--space-6); }
+
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-5 { padding: var(--space-5); }
+.p-6 { padding: var(--space-6); }
+.p-8 { padding: var(--space-8); }
+
+.pt-1 { padding-top: var(--space-1); }
+.pt-2 { padding-top: var(--space-2); }
+.pt-3 { padding-top: var(--space-3); }
+.pt-4 { padding-top: var(--space-4); }
+.pt-5 { padding-top: var(--space-5); }
+.pt-6 { padding-top: var(--space-6); }
+
+.pb-1 { padding-bottom: var(--space-1); }
+.pb-2 { padding-bottom: var(--space-2); }
+.pb-3 { padding-bottom: var(--space-3); }
+.pb-4 { padding-bottom: var(--space-4); }
+.pb-5 { padding-bottom: var(--space-5); }
+.pb-6 { padding-bottom: var(--space-6); }
+
+.pl-1 { padding-left: var(--space-1); }
+.pl-2 { padding-left: var(--space-2); }
+.pl-3 { padding-left: var(--space-3); }
+.pl-4 { padding-left: var(--space-4); }
+.pl-5 { padding-left: var(--space-5); }
+.pl-6 { padding-left: var(--space-6); }
+
+.pr-1 { padding-right: var(--space-1); }
+.pr-2 { padding-right: var(--space-2); }
+.pr-3 { padding-right: var(--space-3); }
+.pr-4 { padding-right: var(--space-4); }
+.pr-5 { padding-right: var(--space-5); }
+.pr-6 { padding-right: var(--space-6); }
+
+/* Gap Utilities for Flexbox */
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-5 { gap: var(--space-5); }
+.gap-6 { gap: var(--space-6); }
+.gap-8 { gap: var(--space-8); }
+
+/* Apple HIG Layout Utilities */
+.apple-container {
+  max-width: 1440px; /* Optimal reading width */
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg); /* 20px */
+}
+
+.apple-section {
+  margin-bottom: var(--spacing-3xl); /* 48px */
+}
+
+.apple-content-group {
+  margin-bottom: var(--spacing-xl); /* 24px */
+}
+
+.apple-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.apple-stack.tight { gap: var(--spacing-xs); }    /* 4px */
+.apple-stack.normal { gap: var(--spacing-sm); }   /* 8px */
+.apple-stack.relaxed { gap: var(--spacing-md); }  /* 16px */
+.apple-stack.loose { gap: var(--spacing-lg); }    /* 20px */
+
+.apple-inline {
+  display: flex;
+  align-items: center;
+}
+
+.apple-inline.tight { gap: var(--spacing-xs); }    /* 4px */
+.apple-inline.normal { gap: var(--spacing-sm); }   /* 8px */
+.apple-inline.relaxed { gap: var(--spacing-md); }  /* 16px */
+.apple-inline.loose { gap: var(--spacing-lg); }    /* 20px */
+
+/* Content Width Constraints */
+.apple-prose {
+  max-width: 65ch; /* Optimal reading width */
+  line-height: var(--leading-relaxed);
+}
+
+.apple-narrow {
+  max-width: 45ch; /* Narrow content */
+}
+
+.apple-wide {
+  max-width: 85ch; /* Wide content */
+}
+
+/* Apple HIG Visual Hierarchy */
+.apple-heading-1 {
+  font-size: var(--text-3xl); /* 28px */
+  font-weight: var(--font-bold); /* 700 */
+  line-height: var(--leading-tight);
+  color: var(--apple-text-primary);
+  margin-bottom: var(--spacing-lg); /* 20px */
+}
+
+.apple-heading-2 {
+  font-size: var(--text-2xl); /* 24px */
+  font-weight: var(--font-semibold); /* 600 */
+  line-height: var(--leading-tight);
+  color: var(--apple-text-primary);
+  margin-bottom: var(--spacing-md); /* 16px */
+}
+
+.apple-heading-3 {
+  font-size: var(--text-xl); /* 20px */
+  font-weight: var(--font-semibold); /* 600 */
+  line-height: var(--leading-normal);
+  color: var(--apple-text-primary);
+  margin-bottom: var(--spacing-md); /* 16px */
+}
+
+.apple-heading-4 {
+  font-size: var(--text-lg); /* 18px */
+  font-weight: var(--font-medium); /* 500 */
+  line-height: var(--leading-normal);
+  color: var(--apple-text-primary);
+  margin-bottom: var(--spacing-sm); /* 8px */
+}
+
+.apple-body {
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-normal); /* 400 */
+  line-height: var(--leading-relaxed);
+  color: var(--apple-text-primary);
+}
+
+.apple-body-large {
+  font-size: var(--text-md); /* 16px */
+  font-weight: var(--font-normal); /* 400 */
+  line-height: var(--leading-relaxed);
+  color: var(--apple-text-primary);
+}
+
+.apple-caption {
+  font-size: var(--text-sm); /* 12px */
+  font-weight: var(--font-normal); /* 400 */
+  line-height: var(--leading-normal);
+  color: var(--apple-text-secondary);
+}
+
+.apple-footnote {
+  font-size: var(--text-xs); /* 11px */
+  font-weight: var(--font-normal); /* 400 */
+  line-height: var(--leading-normal);
+  color: var(--apple-text-tertiary);
+}
+
+/* Apple HIG Panel System */
+.apple-panel {
+  background: var(--apple-bg-primary);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--radius-lg); /* 12px */
+  overflow: hidden;
+  box-shadow: var(--apple-shadow-sm);
+}
+
+.apple-panel-header {
+  padding: var(--spacing-lg); /* 20px */
+  background: var(--apple-surface);
+  border-bottom: 1px solid var(--apple-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--touch-target-md); /* 44px */
+}
+
+.apple-panel-title {
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-semibold); /* 600 */
+  color: var(--apple-text-primary);
+  line-height: var(--leading-normal);
+}
+
+.apple-panel-content {
+  padding: var(--spacing-lg); /* 20px */
+}
+
+.apple-panel-footer {
+  padding: var(--spacing-lg); /* 20px */
+  background: var(--apple-surface);
+  border-top: 1px solid var(--apple-border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-sm); /* 8px */
+}
+
+/* Legacy Utility Classes - Updated to use 8pt grid */
 .btn-small {
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: var(--spacing-sm) var(--spacing-md); /* 8px 16px */
+  font-size: var(--text-sm); /* 12px */
   background: var(--apple-surface);
   border: 1px solid var(--apple-border);
   color: var(--apple-text-secondary);
-  border-radius: 8px;
+  border-radius: var(--radius-md); /* 8px */
   cursor: pointer;
   transition: var(--apple-transition-fast);
-  min-height: 32px; /* Smaller minimum for legacy support */
+  min-height: var(--touch-target-sm); /* 32px */
 }
 
 .btn-small:hover {
@@ -201,18 +537,18 @@ body {
 }
 
 .action-btn {
-  padding: 10px;
+  padding: var(--spacing-md); /* 16px */
   background: var(--apple-surface);
   border: 1px solid var(--apple-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md); /* 8px */
   color: var(--apple-text-secondary);
   cursor: pointer;
   transition: var(--apple-transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px; /* Apple HIG minimum touch target */
-  min-width: 44px;
+  min-height: var(--touch-target-md); /* 44px */
+  min-width: var(--touch-target-md); /* 44px */
 }
 
 .action-btn:hover {
@@ -311,31 +647,34 @@ body {
   height: 100%;
   color: var(--linear-text-tertiary);
   text-align: center;
+  padding: var(--spacing-2xl); /* 32px */
 }
 
 .empty-state-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: var(--text-3xl); /* 28px - reduced from 48px for better proportion */
+  margin-bottom: var(--spacing-lg); /* 20px */
   opacity: 0.5;
 }
 
 .empty-state-title {
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 8px;
+  font-size: var(--text-md); /* 16px */
+  font-weight: var(--font-semibold); /* 600 */
+  margin-bottom: var(--spacing-sm); /* 8px */
+  color: var(--apple-text-primary);
 }
 
 .empty-state-description {
-  font-size: 13px;
+  font-size: var(--text-sm); /* 12px */
   max-width: 300px;
+  line-height: var(--leading-relaxed); /* 1.6 */
 }
 
 /* Apple-style Utility Classes */
 .apple-card {
   background: var(--apple-bg-tertiary);
   border: 1px solid var(--apple-border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-lg); /* 12px */
+  padding: var(--spacing-lg); /* 20px */
   box-shadow: var(--apple-shadow-sm);
 }
 
@@ -387,18 +726,18 @@ body {
 /* Apple HIG Button System */
 .apple-btn {
   font-family: var(--apple-font-primary);
-  font-weight: 500;
-  border-radius: 8px;
+  font-weight: var(--font-medium); /* 500 */
+  border-radius: var(--radius-md); /* 8px */
   cursor: pointer;
   transition: var(--apple-transition-fast);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 44px; /* Apple HIG minimum touch target */
-  padding: 10px 20px;
-  font-size: 14px;
-  line-height: 1.4;
+  gap: var(--spacing-sm); /* 8px */
+  min-height: var(--touch-target-md); /* 44px */
+  padding: var(--spacing-md) var(--spacing-xl); /* 16px 24px */
+  font-size: var(--text-base); /* 14px */
+  line-height: var(--leading-normal); /* 1.4 */
   border: none;
   text-decoration: none;
   user-select: none;
@@ -515,28 +854,28 @@ body {
 
 /* Button Sizes */
 .apple-btn.small {
-  min-height: 32px;
-  padding: 6px 12px;
-  font-size: 12px;
+  min-height: var(--touch-target-sm); /* 32px */
+  padding: var(--spacing-sm) var(--spacing-md); /* 8px 16px */
+  font-size: var(--text-sm); /* 12px */
 }
 
 .apple-btn.large {
-  min-height: 52px;
-  padding: 14px 28px;
-  font-size: 16px;
-  font-weight: 600;
+  min-height: var(--touch-target-xl); /* 52px */
+  padding: var(--spacing-lg) var(--spacing-2xl); /* 20px 32px */
+  font-size: var(--text-md); /* 16px */
+  font-weight: var(--font-semibold); /* 600 */
 }
 
 /* Icon Buttons */
 .apple-btn.icon-only {
-  padding: 10px;
-  min-width: 44px;
+  padding: var(--spacing-md); /* 16px */
+  min-width: var(--touch-target-md); /* 44px */
 }
 
 .apple-btn.icon-only.small {
-  padding: 6px;
-  min-width: 32px;
-  min-height: 32px;
+  padding: var(--spacing-sm); /* 8px */
+  min-width: var(--touch-target-sm); /* 32px */
+  min-height: var(--touch-target-sm); /* 32px */
 }
 
 /* Apple HIG Form Controls */
@@ -544,12 +883,12 @@ body {
   font-family: var(--apple-font-primary);
   background: var(--apple-bg-primary);
   border: 1px solid var(--apple-border);
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
+  border-radius: var(--radius-md); /* 8px */
+  padding: var(--spacing-md) var(--spacing-lg); /* 16px 20px */
+  font-size: var(--text-base); /* 14px */
   color: var(--apple-text-primary);
   transition: var(--apple-transition-fast);
-  min-height: 44px; /* Apple HIG minimum touch target */
+  min-height: var(--touch-target-md); /* 44px */
   width: 100%;
 }
 
@@ -591,52 +930,52 @@ body {
 
 /* Validation States */
 .apple-form-group {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-lg); /* 20px */
 }
 
 .apple-form-group label {
   display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
+  margin-bottom: var(--spacing-sm); /* 8px */
+  font-weight: var(--font-medium); /* 500 */
   color: var(--apple-text-primary);
-  font-size: 14px;
+  font-size: var(--text-base); /* 14px */
 }
 
 .apple-error-message {
   color: var(--accent-error);
-  font-size: 12px;
-  margin-top: 6px;
+  font-size: var(--text-sm); /* 12px */
+  margin-top: var(--spacing-sm); /* 8px */
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-sm); /* 8px */
 }
 
 .apple-success-message {
   color: var(--accent-success);
-  font-size: 12px;
-  margin-top: 6px;
+  font-size: var(--text-sm); /* 12px */
+  margin-top: var(--spacing-sm); /* 8px */
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-sm); /* 8px */
 }
 
 .apple-help-text {
   color: var(--apple-text-secondary);
-  font-size: 12px;
-  margin-top: 4px;
+  font-size: var(--text-sm); /* 12px */
+  margin-top: var(--spacing-xs); /* 4px */
 }
 
 .apple-textarea {
   font-family: var(--apple-font-primary);
   background: var(--apple-bg-primary);
   border: 1px solid var(--apple-border);
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
+  border-radius: var(--radius-md); /* 8px */
+  padding: var(--spacing-md) var(--spacing-lg); /* 16px 20px */
+  font-size: var(--text-base); /* 14px */
   color: var(--apple-text-primary);
   transition: var(--apple-transition-fast);
   width: 100%;
-  min-height: 88px; /* 2x minimum touch target */
+  min-height: calc(var(--touch-target-md) * 2); /* 88px - 2x minimum touch target */
   resize: vertical;
 }
 
@@ -752,20 +1091,21 @@ body {
 /* Apple HIG List Styling */
 .apple-list {
   background: var(--apple-bg-primary);
-  border-radius: 12px;
+  border-radius: var(--radius-lg); /* 12px */
   overflow: hidden;
   border: 1px solid var(--apple-border);
 }
 
 .apple-list-item {
-  padding: 12px 16px;
+  padding: var(--spacing-md) var(--spacing-lg); /* 16px 20px */
   border-bottom: 1px solid var(--apple-border);
   transition: var(--apple-transition-fast);
   cursor: pointer;
-  min-height: 44px; /* Apple HIG minimum touch target */
+  min-height: var(--touch-target-md); /* 44px */
   display: flex;
   align-items: center;
   justify-content: space-between;
+  font-size: var(--text-base); /* 14px */
 }
 
 .apple-list-item:last-child {
@@ -803,21 +1143,21 @@ body {
   display: inline-flex;
   background: var(--apple-surface);
   border: 1px solid var(--apple-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md); /* 8px */
   overflow: hidden;
-  min-height: 44px;
+  min-height: var(--touch-target-md); /* 44px */
 }
 
 .apple-segment {
-  padding: 10px 16px;
+  padding: var(--spacing-md) var(--spacing-lg); /* 16px 20px */
   background: transparent;
   border: none;
   color: var(--apple-text-primary);
   cursor: pointer;
   transition: var(--apple-transition-fast);
   font-family: var(--apple-font-primary);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-medium); /* 500 */
   flex: 1;
   min-width: 60px;
 }
@@ -887,18 +1227,59 @@ textarea:focus-visible,
   }
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
+/* Apple HIG Responsive Breakpoints */
+/* Based on common Apple device sizes and design patterns */
+
+/* Large screens (iMac, large displays) - 1440px+ */
+@media (min-width: 1440px) {
   .left-panel {
-    width: 250px;
+    width: var(--panel-width-xl); /* 400px */
   }
   
   .middle-panel {
-    width: 300px;
+    width: var(--panel-width-xl); /* 400px */
   }
 }
 
-@media (max-width: 768px) {
+/* Standard desktop (MacBook Pro, iMac) - 1024px to 1439px */
+@media (max-width: 1439px) and (min-width: 1024px) {
+  .left-panel {
+    width: var(--panel-width-lg); /* 350px */
+  }
+  
+  .middle-panel {
+    width: var(--panel-width-lg); /* 350px */
+  }
+}
+
+/* Compact desktop (MacBook Air, smaller displays) - 768px to 1023px */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .left-panel {
+    width: var(--panel-width-md); /* 300px */
+  }
+  
+  .middle-panel {
+    width: var(--panel-width-md); /* 300px */
+  }
+  
+  /* Tighter spacing for compact screens */
+  .left-panel-header,
+  .middle-panel-header,
+  .right-panel-header {
+    padding: var(--spacing-md); /* 16px */
+  }
+  
+  .json-files-list {
+    padding: var(--spacing-sm); /* 8px */
+  }
+  
+  .json-content {
+    padding: var(--spacing-md); /* 16px */
+  }
+}
+
+/* Tablet and mobile (iPad, iPhone) - below 768px */
+@media (max-width: 767px) {
   .app-container {
     flex-direction: column;
   }
@@ -906,31 +1287,80 @@ textarea:focus-visible,
   .left-panel,
   .middle-panel {
     width: 100%;
-    height: 200px;
+    height: 200px; /* Fixed height for mobile */
+    min-width: unset;
+    max-width: unset;
   }
   
   .right-panel {
     flex: 1;
+    min-height: 300px;
+  }
+  
+  /* Enhanced spacing for mobile - Apple HIG touch guidelines */
+  .left-panel-header,
+  .middle-panel-header,
+  .right-panel-header {
+    padding: var(--spacing-lg); /* 20px */
+  }
+  
+  .json-files-list {
+    padding: var(--spacing-md); /* 16px */
+  }
+  
+  .json-content {
+    padding: var(--spacing-lg); /* 20px */
   }
   
   /* Enhanced touch targets for mobile */
   .apple-btn {
-    min-height: 48px; /* Larger touch targets on mobile */
-    padding: 12px 24px;
+    min-height: var(--touch-target-lg); /* 48px */
+    padding: var(--spacing-md) var(--spacing-xl); /* 16px 24px */
+    font-size: var(--text-base); /* 14px */
   }
   
   .apple-btn.small {
-    min-height: 40px;
-    padding: 8px 16px;
+    min-height: var(--touch-target-sm); /* 32px */
+    padding: var(--spacing-sm) var(--spacing-md); /* 8px 16px */
+    font-size: var(--text-sm); /* 12px */
+  }
+  
+  .apple-btn.large {
+    min-height: var(--touch-target-xl); /* 52px */
+    padding: var(--spacing-lg) var(--spacing-2xl); /* 20px 32px */
+    font-size: var(--text-md); /* 16px */
   }
   
   .apple-list-item {
-    min-height: 48px;
-    padding: 16px;
+    min-height: var(--touch-target-lg); /* 48px */
+    padding: var(--spacing-lg); /* 20px */
+  }
+  
+  .json-file-card {
+    min-height: var(--touch-target-lg); /* 48px */
+    padding: var(--spacing-lg); /* 20px */
+    margin-bottom: var(--spacing-md); /* 16px */
   }
   
   .context-menu-item {
-    min-height: 48px;
-    padding: 16px;
+    min-height: var(--touch-target-lg); /* 48px */
+    padding: var(--spacing-lg); /* 20px */
+  }
+}
+
+/* High-density displays (Retina) - optimize for crisp rendering */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Ensure 1px borders render crisply on high-DPI displays */
+  .left-panel,
+  .middle-panel,
+  .right-panel {
+    border-width: 0.5px;
+  }
+  
+  .apple-card,
+  .json-file-card,
+  .apple-input,
+  .apple-textarea {
+    border-width: 0.5px;
   }
 }

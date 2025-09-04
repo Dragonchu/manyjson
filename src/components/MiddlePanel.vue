@@ -188,9 +188,9 @@ onUnmounted(() => {
 
 <style scoped>
 .middle-panel {
-  width: 350px;
-  min-width: 300px;
-  max-width: 500px;
+  width: var(--panel-width-lg); /* 350px */
+  min-width: var(--panel-width-md); /* 300px */
+  max-width: var(--panel-width-xl); /* 400px */
   background: var(--linear-bg-tertiary);
   border-right: 1px solid var(--linear-border);
   display: flex;
@@ -198,7 +198,7 @@ onUnmounted(() => {
 }
 
 .middle-panel-header {
-  padding: 16px;
+  padding: var(--spacing-lg); /* 20px - Apple standard medium */
   border-bottom: 1px solid var(--linear-border);
   background: var(--linear-surface);
 }
@@ -207,37 +207,39 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm); /* 8px */
 }
 
 .middle-panel-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-semibold); /* 600 */
   color: var(--linear-text-primary);
+  line-height: var(--leading-normal);
 }
 
 /* Button styles moved to apple-btn system in main CSS */
 
 .schema-info {
-  font-size: 12px;
+  font-size: var(--text-sm); /* 12px */
   color: var(--linear-text-tertiary);
+  line-height: var(--leading-normal);
 }
 
 .json-files-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: var(--spacing-sm); /* 8px */
 }
 
 .json-file-card {
   background: var(--apple-bg-primary);
   border: 1px solid var(--apple-border);
-  border-radius: 12px; /* Apple HIG standard radius */
-  padding: 16px;
-  margin-bottom: 8px;
+  border-radius: var(--radius-lg); /* 12px */
+  padding: var(--spacing-lg); /* 20px */
+  margin-bottom: var(--spacing-sm); /* 8px */
   cursor: pointer;
   transition: var(--apple-transition-fast);
-  min-height: 44px; /* Apple HIG minimum touch target */
+  min-height: var(--touch-target-md); /* 44px */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -263,20 +265,22 @@ onUnmounted(() => {
 }
 
 .json-file-name {
-  font-size: 14px; /* Improved readability */
-  font-weight: 500;
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-medium); /* 500 */
   color: var(--apple-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs); /* 4px */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: var(--leading-normal);
 }
 
 .json-file-status {
-  font-size: 11px;
+  font-size: var(--text-xs); /* 11px */
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs); /* 4px */
+  line-height: var(--leading-normal);
 }
 
 /* Inline rename styles */
@@ -287,19 +291,19 @@ onUnmounted(() => {
 }
 
 .json-file-name-edit {
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs); /* 4px */
   position: relative;
 }
 
 .inline-rename-input {
   width: 100%;
-  padding: 4px 8px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: var(--spacing-xs) var(--spacing-sm); /* 4px 8px */
+  font-size: var(--text-sm); /* 12px */
+  font-weight: var(--font-medium); /* 500 */
   color: var(--linear-text-primary);
   background: var(--linear-bg-primary);
   border: 2px solid var(--linear-accent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm); /* 4px */
   outline: none;
   font-family: inherit;
   transition: border-color 0.15s ease;
@@ -307,10 +311,10 @@ onUnmounted(() => {
 
 /* Inline input inherits apple-input styling with overrides */
 .inline-rename-input {
-  min-height: 32px; /* Smaller for inline editing */
-  padding: 6px 12px;
-  font-size: 14px;
-  font-weight: 500;
+  min-height: var(--touch-target-sm); /* 32px - smaller for inline editing */
+  padding: var(--spacing-sm) var(--spacing-md); /* 8px 16px */
+  font-size: var(--text-base); /* 14px */
+  font-weight: var(--font-medium); /* 500 */
 }
 
 .inline-rename-input.invalid-input {
@@ -327,22 +331,22 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 6px;
-  padding: 8px 12px;
+  margin-top: var(--spacing-sm); /* 8px */
+  padding: var(--spacing-sm) var(--spacing-md); /* 8px 16px */
   background: var(--accent-error);
   color: white;
-  font-size: 12px;
-  border-radius: 8px; /* Apple HIG standard radius */
+  font-size: var(--text-sm); /* 12px */
+  border-radius: var(--radius-md); /* 8px */
   z-index: 10;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   box-shadow: var(--apple-shadow-md);
-  font-weight: 500;
+  font-weight: var(--font-medium); /* 500 */
 }
 
 /* Ensure the card has enough space for validation error */
 .json-file-card.editing {
-  margin-bottom: 32px;
+  margin-bottom: var(--spacing-2xl); /* 32px */
 }
 </style>
