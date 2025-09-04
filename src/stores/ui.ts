@@ -46,6 +46,7 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   function setDiffMode(enabled: boolean, sourceFile?: any, comparisonFile?: any) {
+    console.log('setDiffMode called:', { enabled, sourceFile: sourceFile?.name, comparisonFile: comparisonFile?.name })
     isDiffMode.value = enabled
     if (enabled) {
       isEditMode.value = false
@@ -53,9 +54,11 @@ export const useUIStore = defineStore('ui', () => {
       isEditingSchema.value = false
       diffSourceFile.value = sourceFile
       diffComparisonFile.value = comparisonFile
+      console.log('Diff mode enabled, state:', { isDiffMode: isDiffMode.value, sourceFile: diffSourceFile.value?.name, comparisonFile: diffComparisonFile.value?.name })
     } else {
       diffSourceFile.value = null
       diffComparisonFile.value = null
+      console.log('Diff mode disabled')
     }
   }
 

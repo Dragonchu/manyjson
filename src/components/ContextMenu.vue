@@ -44,6 +44,7 @@ const currentFile = ref<JsonFile | null>(null)
 const contextType = ref<'schema' | 'file'>('schema')
 
 function showContextMenu(event: CustomEvent) {
+  console.log('showContextMenu called with:', event.detail)
   const { event: mouseEvent, schema, file, type } = event.detail
   
   if (type === 'schema') {
@@ -58,6 +59,7 @@ function showContextMenu(event: CustomEvent) {
   
   position.value = { x: mouseEvent.clientX, y: mouseEvent.clientY }
   isVisible.value = true
+  console.log('Context menu should be visible:', { isVisible: isVisible.value, contextType: contextType.value, fileName: file?.name })
 }
 
 function hideContextMenu() {
@@ -148,11 +150,13 @@ async function handleCopyFile() {
 }
 
 function handleDiffWith() {
+  console.log('handleDiffWith called with currentFile:', currentFile.value?.name)
   if (currentFile.value) {
     // Show file selector popup for diff comparison
     const diffEvent = new CustomEvent('show-file-selector', {
       detail: { sourceFile: currentFile.value }
     })
+    console.log('Dispatching show-file-selector event')
     document.dispatchEvent(diffEvent)
   }
   hideContextMenu()

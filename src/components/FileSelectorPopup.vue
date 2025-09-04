@@ -64,7 +64,7 @@
         <div v-if="activeTab === 'external'" class="external-files-section">
           <div class="browse-section">
             <button class="browse-btn" @click="browseForFile">
-              📁 Browse for JSON File
+              📁 Browse for File
             </button>
             <div v-if="externalFile" class="selected-external-file">
               <div class="external-file-info">
@@ -72,6 +72,10 @@
                 <span class="file-path">{{ externalFile.path }}</span>
               </div>
             </div>
+            <!-- Test button for debugging -->
+            <button class="test-btn" @click="testDiffWithSampleFile" style="margin-top: 10px;">
+              🧪 Test Diff (Debug)
+            </button>
           </div>
         </div>
       </div>
@@ -91,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppStore, type JsonFile } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 
@@ -104,6 +108,11 @@ const selectedFile = ref<JsonFile | null>(null)
 const externalFile = ref<{ name: string; path: string; content: any } | null>(null)
 const activeTab = ref<'project' | 'external'>('project')
 
+// Debug watcher
+watch(isVisible, (newValue) => {
+  console.log('FileSelectorPopup isVisible changed to:', newValue)
+})
+
 const allProjectFiles = computed(() => {
   return appStore.schemas.flatMap(schema => 
     appStore.jsonFiles.filter(file => file.schemaPath === schema.path)
@@ -111,11 +120,18 @@ const allProjectFiles = computed(() => {
 })
 
 const canCompare = computed(() => {
-  if (activeTab.value === 'project') {
-    return selectedFile.value && selectedFile.value.path !== sourceFile.value?.path
-  } else {
-    return externalFile.value !== null
-  }
+  const result = activeTab.value === 'project' 
+    ? (selectedFile.value && selectedFile.value.path !== sourceFile.value?.path)
+    : (externalFile.value !== null)
+  
+  console.log('canCompare computed:', { 
+    activeTab: activeTab.value, 
+    selectedFile: selectedFile.value?.name, 
+    externalFile: externalFile.value?.name,
+    result 
+  })
+  
+  return result
 })
 
 function getSchemaFiles(schema: any) {
@@ -129,7 +145,15 @@ function selectFile(file: JsonFile) {
 }
 
 async function browseForFile() {
+  console.log('browseForFile called')
+  
+  if (!window.electronAPI) {
+    ui.showStatus('File browsing not available in web mode. Please use Electron version.', 'error')
+    return
+  }
+  
   try {
+    console.log('Showing open dialog...')
     const result = await window.electronAPI.showOpenDialog({
       title: 'Select file to compare',
       filters: [
@@ -139,12 +163,35 @@ async function browseForFile() {
       ],
       properties: ['openFile']
     })
+    
+    console.log('Open dialog result:', result)
 
     if (!result.canceled && result.filePaths.length > 0) {
       const filePath = result.filePaths[0]
       
       // First check if it's actually a file (not a directory)
       try {
+        // Check if the new APIs are available
+        if (!window.electronAPI.getFileStats || !window.electronAPI.readTextFile) {
+          console.log('New APIs not available, falling back to basic file reading')
+          // Fallback to basic file reading
+          try {
+            const content = await window.electronAPI.readFile(filePath)
+            const fileName = filePath.split(/[/\\]/).pop() || 'Unknown'
+            
+            externalFile.value = {
+              name: fileName,
+              path: filePath,
+              content: content
+            }
+            selectedFile.value = null
+            return
+          } catch (error) {
+            ui.showStatus('Failed to read selected file', 'error')
+            return
+          }
+        }
+        
         const stats = await window.electronAPI.getFileStats(filePath)
         if (!stats.success) {
           ui.showStatus('Failed to get file information', 'error')
@@ -189,11 +236,17 @@ async function browseForFile() {
 }
 
 function startComparison() {
-  if (!sourceFile.value) return
+  console.log('startComparison called', { sourceFile: sourceFile.value, activeTab: activeTab.value, selectedFile: selectedFile.value, externalFile: externalFile.value })
+  
+  if (!sourceFile.value) {
+    console.log('No source file available')
+    return
+  }
   
   let comparisonFile = null
   if (activeTab.value === 'project' && selectedFile.value) {
     comparisonFile = selectedFile.value
+    console.log('Using project file for comparison:', comparisonFile.name)
   } else if (activeTab.value === 'external' && externalFile.value) {
     comparisonFile = {
       name: externalFile.value.name,
@@ -202,9 +255,11 @@ function startComparison() {
       isValid: true, // We assume external files are valid for comparison
       errors: []
     } as JsonFile
+    console.log('Using external file for comparison:', comparisonFile.name)
   }
   
   if (comparisonFile) {
+    console.log('Dispatching start-diff-view event')
     // Emit event to start diff view
     const diffEvent = new CustomEvent('start-diff-view', {
       detail: { 
@@ -214,16 +269,47 @@ function startComparison() {
     })
     document.dispatchEvent(diffEvent)
     close()
+  } else {
+    console.log('No comparison file selected')
   }
 }
 
 function showFileSelector(event: CustomEvent) {
+  console.log('showFileSelector called with event:', event.detail)
   const { sourceFile: file } = event.detail
   sourceFile.value = file
   selectedFile.value = null
   externalFile.value = null
   activeTab.value = 'project'
   isVisible.value = true
+  console.log('File selector popup should now be visible:', { isVisible: isVisible.value, sourceFile: sourceFile.value?.name })
+}
+
+function testDiffWithSampleFile() {
+  console.log('testDiffWithSampleFile called')
+  if (!sourceFile.value) {
+    console.log('No source file for test')
+    return
+  }
+  
+  // Create a mock comparison file for testing
+  const mockComparisonFile = {
+    name: 'test-comparison.json',
+    path: '/test/path',
+    content: { test: 'data', modified: 'value' },
+    isValid: true,
+    errors: []
+  } as JsonFile
+  
+  console.log('Dispatching test start-diff-view event')
+  const diffEvent = new CustomEvent('start-diff-view', {
+    detail: { 
+      sourceFile: sourceFile.value, 
+      comparisonFile: mockComparisonFile 
+    }
+  })
+  document.dispatchEvent(diffEvent)
+  close()
 }
 
 function close() {
@@ -261,7 +347,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
 }
 
 .popup-container {

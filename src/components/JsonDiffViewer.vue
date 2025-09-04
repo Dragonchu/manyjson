@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useUIStore } from '@/stores/ui'
 import JsonHighlight from './JsonHighlight.vue'
 
@@ -187,20 +187,7 @@ function closeDiff() {
   ui.setDiffMode(false)
 }
 
-onMounted(() => {
-  // Handle diff view start event
-  const handleStartDiff = (event: CustomEvent) => {
-    const { sourceFile, comparisonFile } = event.detail
-    ui.setDiffMode(true, sourceFile, comparisonFile)
-    ui.showStatus(`Comparing ${sourceFile.name} with ${comparisonFile.name}`, 'info')
-  }
-  
-  document.addEventListener('start-diff-view', handleStartDiff as EventListener)
-  
-  return () => {
-    document.removeEventListener('start-diff-view', handleStartDiff as EventListener)
-  }
-})
+// This component just displays the diff, event handling is done in Home.vue
 </script>
 
 <style scoped>
