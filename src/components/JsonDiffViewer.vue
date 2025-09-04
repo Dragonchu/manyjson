@@ -100,7 +100,15 @@ function calculateJsonDiff(source: any, target: any) {
   const removed: string[] = []
   const modified: string[] = []
   
-  // Simple diff implementation - can be enhanced with a proper diff library
+  // Handle plain text comparison
+  if (typeof source === 'string' || typeof target === 'string') {
+    return calculateTextDiff(
+      typeof source === 'string' ? source : JSON.stringify(source, null, 2),
+      typeof target === 'string' ? target : JSON.stringify(target, null, 2)
+    )
+  }
+  
+  // JSON object comparison
   const sourceKeys = new Set(Object.keys(flattenObject(source)))
   const targetKeys = new Set(Object.keys(flattenObject(target)))
   const sourceFlat = flattenObject(source)
@@ -124,6 +132,33 @@ function calculateJsonDiff(source: any, target: any) {
   for (const key of sourceKeys) {
     if (targetKeys.has(key) && JSON.stringify(sourceFlat[key]) !== JSON.stringify(targetFlat[key])) {
       modified.push(key)
+    }
+  }
+  
+  return { added, removed, modified }
+}
+
+function calculateTextDiff(sourceText: string, targetText: string) {
+  const added: string[] = []
+  const removed: string[] = []
+  const modified: string[] = []
+  
+  const sourceLines = sourceText.split('\n')
+  const targetLines = targetText.split('\n')
+  
+  // Simple line-by-line comparison
+  const maxLines = Math.max(sourceLines.length, targetLines.length)
+  
+  for (let i = 0; i < maxLines; i++) {
+    const sourceLine = sourceLines[i]
+    const targetLine = targetLines[i]
+    
+    if (sourceLine === undefined) {
+      added.push(`line-${i + 1}`)
+    } else if (targetLine === undefined) {
+      removed.push(`line-${i + 1}`)
+    } else if (sourceLine !== targetLine) {
+      modified.push(`line-${i + 1}`)
     }
   }
   

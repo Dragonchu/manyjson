@@ -131,9 +131,10 @@ function selectFile(file: JsonFile) {
 async function browseForFile() {
   try {
     const result = await window.electronAPI.showOpenDialog({
-      title: 'Select JSON file to compare',
+      title: 'Select file to compare',
       filters: [
         { name: 'JSON Files', extensions: ['json'] },
+        { name: 'Text Files', extensions: ['txt', 'md', 'yaml', 'yml', 'xml', 'csv'] },
         { name: 'All Files', extensions: ['*'] }
       ],
       properties: ['openFile']
@@ -141,9 +142,36 @@ async function browseForFile() {
 
     if (!result.canceled && result.filePaths.length > 0) {
       const filePath = result.filePaths[0]
+      
+      // First check if it's actually a file (not a directory)
       try {
-        const content = await window.electronAPI.readFile(filePath)
+        const stats = await window.electronAPI.getFileStats(filePath)
+        if (!stats.success) {
+          ui.showStatus('Failed to get file information', 'error')
+          return
+        }
+        
+        if (!stats.isFile) {
+          ui.showStatus('Selected item is not a file', 'error')
+          return
+        }
+        
+        // Try to read as text file first
+        const textResult = await window.electronAPI.readTextFile(filePath)
+        if (!textResult.success) {
+          ui.showStatus('Failed to read selected file', 'error')
+          return
+        }
+        
         const fileName = filePath.split(/[/\\]/).pop() || 'Unknown'
+        let content = textResult.content
+        
+        // Try to parse as JSON if possible, otherwise use as plain text
+        try {
+          content = JSON.parse(textResult.content!)
+        } catch {
+          // Not valid JSON, keep as string for text comparison
+        }
         
         externalFile.value = {
           name: fileName,
@@ -152,7 +180,7 @@ async function browseForFile() {
         }
         selectedFile.value = null // Clear project file selection
       } catch (error) {
-        ui.showStatus('Failed to read selected file', 'error')
+        ui.showStatus('Failed to process selected file', 'error')
       }
     }
   } catch (error) {

@@ -119,6 +119,63 @@ electron.ipcMain.handle("read-file-sync", async (event, filename) => {
     throw error;
   }
 });
+electron.ipcMain.handle("read-text-file", async (event, filename) => {
+  logInfo("IPC: read-text-file called", { filename });
+  try {
+    const content = await fs.promises.readFile(filename, "utf-8");
+    logInfo("Text file read successfully", { filename, contentLength: content.length });
+    return { success: true, content };
+  } catch (error) {
+    logError("Failed to read text file", { filename, error });
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+});
+electron.ipcMain.handle("get-file-stats", async (event, filePath) => {
+  logInfo("IPC: get-file-stats called", { filePath });
+  try {
+    const stats = await fs.promises.stat(filePath);
+    return {
+      success: true,
+      isFile: stats.isFile(),
+      isDirectory: stats.isDirectory(),
+      size: stats.size,
+      modified: stats.mtime
+    };
+  } catch (error) {
+    logError("Failed to get file stats", { filePath, error });
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+});
+electron.ipcMain.handle("list-directory", async (event, dirPath) => {
+  logInfo("IPC: list-directory called", { dirPath });
+  try {
+    const entries = await fs.promises.readdir(dirPath);
+    const entryInfos = await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = path.join(dirPath, entry);
+        try {
+          const stats = await fs.promises.stat(fullPath);
+          return {
+            name: entry,
+            path: fullPath,
+            isFile: stats.isFile(),
+            isDirectory: stats.isDirectory(),
+            size: stats.size,
+            modified: stats.mtime
+          };
+        } catch (error) {
+          logError("Failed to stat entry", { entry, error });
+          return null;
+        }
+      })
+    );
+    const validEntries = entryInfos.filter((entry) => entry !== null);
+    return { success: true, entries: validEntries };
+  } catch (error) {
+    logError("Failed to list directory", { dirPath, error });
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+});
 electron.ipcMain.handle("write-json-file", async (event, filePath, content) => {
   logInfo("write-json-file requested", { filePath, contentLength: content.length });
   try {
@@ -207,28 +264,33 @@ electron.ipcMain.handle("list-config-files", async () => {
   try {
     const configDir = await ensureConfigDirectory();
     logDebug("Listing files in config directory:", configDir);
-    const files = await fs.promises.readdir(configDir);
-    logDebug("Found files:", files);
-    const jsonFiles = files.filter((file) => file.endsWith(".json") && !file.endsWith(".tmp"));
-    logInfo("Found JSON files:", jsonFiles);
-    const fileInfos = await Promise.all(
-      jsonFiles.map(async (fileName) => {
-        const filePath = path.join(configDir, fileName);
-        try {
-          const content = await fs.promises.readFile(filePath, "utf8");
-          const parsedContent = JSON.parse(content);
-          logDebug("Successfully read file:", { fileName, size: content.length });
-          return {
-            name: fileName,
-            path: filePath,
-            content: parsedContent
-          };
-        } catch (error) {
-          logError("Failed to read or parse file", { fileName, error });
-          throw error;
+    const entries = await fs.promises.readdir(configDir);
+    logDebug("Found entries:", entries);
+    const fileInfos = [];
+    for (const entry of entries) {
+      const fullPath = path.join(configDir, entry);
+      try {
+        const stats = await fs.promises.stat(fullPath);
+        if (stats.isFile() && !entry.endsWith(".tmp")) {
+          if (entry.endsWith(".json")) {
+            try {
+              const content = await fs.promises.readFile(fullPath, "utf8");
+              const parsedContent = JSON.parse(content);
+              logDebug("Successfully read JSON file:", { fileName: entry, size: content.length });
+              fileInfos.push({
+                name: entry,
+                path: fullPath,
+                content: parsedContent
+              });
+            } catch (error) {
+              logError("Failed to read or parse JSON file", { fileName: entry, error });
+            }
+          }
         }
-      })
-    );
+      } catch (error) {
+        logError("Failed to stat entry", { entry, error });
+      }
+    }
     logInfo("Successfully loaded config files", { count: fileInfos.length });
     return { success: true, files: fileInfos };
   } catch (error) {
@@ -384,25 +446,29 @@ electron.ipcMain.handle("list-schema-json-files", async (event, schemaName) => {
       logInfo("Schema directory does not exist, returning empty list:", schemaDir);
       return { success: true, files: [] };
     }
-    const files = await fs.promises.readdir(schemaDir);
-    const jsonFiles = files.filter((file) => file.endsWith(".json"));
-    const fileInfos = await Promise.all(
-      jsonFiles.map(async (fileName) => {
-        const filePath = path.join(schemaDir, fileName);
-        try {
-          const content = await fs.promises.readFile(filePath, "utf8");
-          const parsedContent = JSON.parse(content);
-          return {
-            name: fileName,
-            path: filePath,
-            content: parsedContent
-          };
-        } catch (error) {
-          logError("Failed to read schema JSON file", { fileName, error });
-          throw error;
+    const entries = await fs.promises.readdir(schemaDir);
+    const fileInfos = [];
+    for (const entry of entries) {
+      const fullPath = path.join(schemaDir, entry);
+      try {
+        const stats = await fs.promises.stat(fullPath);
+        if (stats.isFile() && entry.endsWith(".json")) {
+          try {
+            const content = await fs.promises.readFile(fullPath, "utf8");
+            const parsedContent = JSON.parse(content);
+            fileInfos.push({
+              name: entry,
+              path: fullPath,
+              content: parsedContent
+            });
+          } catch (error) {
+            logError("Failed to read schema JSON file", { fileName: entry, error });
+          }
         }
-      })
-    );
+      } catch (error) {
+        logError("Failed to stat entry", { entry, error });
+      }
+    }
     logInfo("Successfully loaded schema JSON files", { schemaName, count: fileInfos.length });
     return { success: true, files: fileInfos };
   } catch (error) {

@@ -3,6 +3,12 @@ const electron = require("electron");
 const electronAPI = {
   // 文件读取
   readFile: (filename) => electron.ipcRenderer.invoke("read-file-sync", filename),
+  // 读取文本文件（不解析JSON）
+  readTextFile: (filename) => electron.ipcRenderer.invoke("read-text-file", filename),
+  // 获取文件/目录信息
+  getFileStats: (filePath) => electron.ipcRenderer.invoke("get-file-stats", filePath),
+  // 列出目录内容
+  listDirectory: (dirPath) => electron.ipcRenderer.invoke("list-directory", dirPath),
   // 文件写入
   writeJsonFile: (filePath, content) => electron.ipcRenderer.invoke("write-json-file", filePath, content),
   // 删除文件

@@ -12,6 +12,18 @@ const electronAPI = {
   readFile: (filename: string): Promise<any> =>
     ipcRenderer.invoke('read-file-sync', filename),
 
+  // 读取文本文件（不解析JSON）
+  readTextFile: (filename: string): Promise<{ success: boolean; content?: string; error?: string }> =>
+    ipcRenderer.invoke('read-text-file', filename),
+
+  // 获取文件/目录信息
+  getFileStats: (filePath: string): Promise<{ success: boolean; isFile?: boolean; isDirectory?: boolean; size?: number; modified?: Date; error?: string }> =>
+    ipcRenderer.invoke('get-file-stats', filePath),
+
+  // 列出目录内容
+  listDirectory: (dirPath: string): Promise<{ success: boolean; entries?: Array<{ name: string; path: string; isFile: boolean; isDirectory: boolean; size: number; modified: Date }>; error?: string }> =>
+    ipcRenderer.invoke('list-directory', dirPath),
+
   // 文件写入
   writeJsonFile: (filePath: string, content: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('write-json-file', filePath, content),

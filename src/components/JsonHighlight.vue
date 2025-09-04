@@ -20,8 +20,25 @@ const props = defineProps<Props>()
 const highlightedJson = computed(() => {
   if (!props.json) return ''
   
-  const jsonString = JSON.stringify(props.json, null, 2)
-  let highlighted = highlightJsonSyntax(jsonString)
+  let content = ''
+  let isJsonContent = false
+  
+  // Check if content is already a string (plain text) or needs JSON stringification
+  if (typeof props.json === 'string') {
+    content = props.json
+    // Try to detect if it's JSON content
+    try {
+      JSON.parse(content)
+      isJsonContent = true
+    } catch {
+      isJsonContent = false
+    }
+  } else {
+    content = JSON.stringify(props.json, null, 2)
+    isJsonContent = true
+  }
+  
+  let highlighted = isJsonContent ? highlightJsonSyntax(content) : highlightPlainText(content)
   
   // Apply diff highlighting if enabled
   if (props.highlightDiffs && props.diffData) {
@@ -56,41 +73,57 @@ function highlightJsonSyntax(json: string): string {
     })
 }
 
+function highlightPlainText(text: string): string {
+  // Escape HTML and preserve whitespace for plain text
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function applyDiffHighlighting(html: string, diffData: { added: string[], removed: string[], modified: string[] }): string {
   let result = html
   
-  // Simple approach: highlight lines that contain changed keys
-  // This is a basic implementation - could be enhanced with more sophisticated diff algorithms
   const lines = result.split('\n')
-  const highlightedLines = lines.map(line => {
+  const highlightedLines = lines.map((line, index) => {
     let hasChange = false
     let changeType = ''
     
-    // Check if line contains any added, removed, or modified keys
-    for (const key of diffData.added) {
-      if (line.includes(`"${key.split('.').pop()}"`)) {
-        hasChange = true
-        changeType = 'added'
-        break
-      }
-    }
-    
-    if (!hasChange) {
-      for (const key of diffData.removed) {
-        if (line.includes(`"${key.split('.').pop()}"`)) {
+    // Check for line-based changes (for text files)
+    const lineKey = `line-${index + 1}`
+    if (diffData.added.includes(lineKey)) {
+      hasChange = true
+      changeType = 'added'
+    } else if (diffData.removed.includes(lineKey)) {
+      hasChange = true
+      changeType = 'removed'
+    } else if (diffData.modified.includes(lineKey)) {
+      hasChange = true
+      changeType = 'modified'
+    } else {
+      // Check for JSON key-based changes
+      for (const key of diffData.added) {
+        if (!key.startsWith('line-') && line.includes(`"${key.split('.').pop()}"`)) {
           hasChange = true
-          changeType = 'removed'
+          changeType = 'added'
           break
         }
       }
-    }
-    
-    if (!hasChange) {
-      for (const key of diffData.modified) {
-        if (line.includes(`"${key.split('.').pop()}"`)) {
-          hasChange = true
-          changeType = 'modified'
-          break
+      
+      if (!hasChange) {
+        for (const key of diffData.removed) {
+          if (!key.startsWith('line-') && line.includes(`"${key.split('.').pop()}"`)) {
+            hasChange = true
+            changeType = 'removed'
+            break
+          }
+        }
+      }
+      
+      if (!hasChange) {
+        for (const key of diffData.modified) {
+          if (!key.startsWith('line-') && line.includes(`"${key.split('.').pop()}"`)) {
+            hasChange = true
+            changeType = 'modified'
+            break
+          }
         }
       }
     }
