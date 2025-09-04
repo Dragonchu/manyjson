@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <!-- Left Panel - Schema Management -->
-    <LeftPanel />
+    <AppSidebar />
     
     <!-- Resize Handle -->
     <div class="resize-handle" id="leftResize"></div>
@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import LeftPanel from '@/components/LeftPanel.vue'
+import AppSidebar from '@/components/AppSidebar.vue'
 import MiddlePanel from '@/components/MiddlePanel.vue'
 import RightPanel from '@/components/RightPanel.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
