@@ -20,6 +20,8 @@
       <div class="context-menu-item" @click="handleViewFile">View File</div>
       <div class="context-menu-item" @click="handleEditFile">Edit File</div>
       <div class="context-menu-separator"></div>
+      <div class="context-menu-item" @click="handleDiffWith">Diff with...</div>
+      <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleRenameFile">Rename File</div>
       <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleDeleteFile">Delete File</div>
@@ -42,6 +44,7 @@ const currentFile = ref<JsonFile | null>(null)
 const contextType = ref<'schema' | 'file'>('schema')
 
 function showContextMenu(event: CustomEvent) {
+  console.log('showContextMenu called with:', event.detail)
   const { event: mouseEvent, schema, file, type } = event.detail
   
   if (type === 'schema') {
@@ -56,6 +59,7 @@ function showContextMenu(event: CustomEvent) {
   
   position.value = { x: mouseEvent.clientX, y: mouseEvent.clientY }
   isVisible.value = true
+  console.log('Context menu should be visible:', { isVisible: isVisible.value, contextType: contextType.value, fileName: file?.name })
 }
 
 function hideContextMenu() {
@@ -141,6 +145,19 @@ async function handleCopyFile() {
     }
   } else {
     console.log('No current file selected')
+  }
+  hideContextMenu()
+}
+
+function handleDiffWith() {
+  console.log('handleDiffWith called with currentFile:', currentFile.value?.name)
+  if (currentFile.value) {
+    // Show file selector popup for diff comparison
+    const diffEvent = new CustomEvent('show-file-selector', {
+      detail: { sourceFile: currentFile.value }
+    })
+    console.log('Dispatching show-file-selector event')
+    document.dispatchEvent(diffEvent)
   }
   hideContextMenu()
 }

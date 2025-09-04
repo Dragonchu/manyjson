@@ -172,6 +172,73 @@ ipcMain.handle('read-file-sync', async (event, filename: string) => {
   }
 })
 
+// Read text file without JSON parsing
+ipcMain.handle('read-text-file', async (event, filename: string) => {
+  logInfo('IPC: read-text-file called', { filename })
+  
+  try {
+    const content = await fs.readFile(filename, 'utf-8')
+    logInfo('Text file read successfully', { filename, contentLength: content.length })
+    return { success: true, content }
+  } catch (error) {
+    logError('Failed to read text file', { filename, error })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// Get file/directory information
+ipcMain.handle('get-file-stats', async (event, filePath: string) => {
+  logInfo('IPC: get-file-stats called', { filePath })
+  
+  try {
+    const stats = await fs.stat(filePath)
+    return {
+      success: true,
+      isFile: stats.isFile(),
+      isDirectory: stats.isDirectory(),
+      size: stats.size,
+      modified: stats.mtime
+    }
+  } catch (error) {
+    logError('Failed to get file stats', { filePath, error })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
+// List directory contents with file attributes
+ipcMain.handle('list-directory', async (event, dirPath: string) => {
+  logInfo('IPC: list-directory called', { dirPath })
+  
+  try {
+    const entries = await fs.readdir(dirPath)
+    const entryInfos = await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = join(dirPath, entry)
+        try {
+          const stats = await fs.stat(fullPath)
+          return {
+            name: entry,
+            path: fullPath,
+            isFile: stats.isFile(),
+            isDirectory: stats.isDirectory(),
+            size: stats.size,
+            modified: stats.mtime
+          }
+        } catch (error) {
+          logError('Failed to stat entry', { entry, error })
+          return null
+        }
+      })
+    )
+    
+    const validEntries = entryInfos.filter(entry => entry !== null)
+    return { success: true, entries: validEntries }
+  } catch (error) {
+    logError('Failed to list directory', { dirPath, error })
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+})
+
 ipcMain.handle('write-json-file', async (event, filePath: string, content: string) => {
   logInfo('write-json-file requested', { filePath, contentLength: content.length })
   
@@ -287,30 +354,39 @@ ipcMain.handle('list-config-files', async () => {
     const configDir = await ensureConfigDirectory()
     logDebug('Listing files in config directory:', configDir)
     
-    const files = await fs.readdir(configDir)
-    logDebug('Found files:', files)
+    const entries = await fs.readdir(configDir)
+    logDebug('Found entries:', entries)
     
-    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.endsWith('.tmp'))
-    logInfo('Found JSON files:', jsonFiles)
-    
-    const fileInfos = await Promise.all(
-      jsonFiles.map(async (fileName) => {
-        const filePath = join(configDir, fileName)
-        try {
-          const content = await fs.readFile(filePath, 'utf8')
-          const parsedContent = JSON.parse(content)
-          logDebug('Successfully read file:', { fileName, size: content.length })
-          return {
-            name: fileName,
-            path: filePath,
-            content: parsedContent
+    // Filter for actual files (not directories) and exclude temp files
+    const fileInfos = []
+    for (const entry of entries) {
+      const fullPath = join(configDir, entry)
+      try {
+        const stats = await fs.stat(fullPath)
+        
+        // Only process actual files, not directories
+        if (stats.isFile() && !entry.endsWith('.tmp')) {
+          // Try to read as JSON schema files
+          if (entry.endsWith('.json')) {
+            try {
+              const content = await fs.readFile(fullPath, 'utf8')
+              const parsedContent = JSON.parse(content)
+              logDebug('Successfully read JSON file:', { fileName: entry, size: content.length })
+              fileInfos.push({
+                name: entry,
+                path: fullPath,
+                content: parsedContent
+              })
+            } catch (error) {
+              logError('Failed to read or parse JSON file', { fileName: entry, error })
+              // Skip invalid JSON files for schema loading
+            }
           }
-        } catch (error) {
-          logError('Failed to read or parse file', { fileName, error })
-          throw error
         }
-      })
-    )
+      } catch (error) {
+        logError('Failed to stat entry', { entry, error })
+      }
+    }
     
     logInfo('Successfully loaded config files', { count: fileInfos.length })
     return { success: true, files: fileInfos }
@@ -523,26 +599,33 @@ ipcMain.handle('list-schema-json-files', async (event, schemaName: string) => {
       return { success: true, files: [] }
     }
     
-    const files = await fs.readdir(schemaDir)
-    const jsonFiles = files.filter(file => file.endsWith('.json'))
+    const entries = await fs.readdir(schemaDir)
+    const fileInfos = []
     
-    const fileInfos = await Promise.all(
-      jsonFiles.map(async (fileName) => {
-        const filePath = join(schemaDir, fileName)
-        try {
-          const content = await fs.readFile(filePath, 'utf8')
-          const parsedContent = JSON.parse(content)
-          return {
-            name: fileName,
-            path: filePath,
-            content: parsedContent
+    for (const entry of entries) {
+      const fullPath = join(schemaDir, entry)
+      try {
+        const stats = await fs.stat(fullPath)
+        
+        // Only process actual files, not directories
+        if (stats.isFile() && entry.endsWith('.json')) {
+          try {
+            const content = await fs.readFile(fullPath, 'utf8')
+            const parsedContent = JSON.parse(content)
+            fileInfos.push({
+              name: entry,
+              path: fullPath,
+              content: parsedContent
+            })
+          } catch (error) {
+            logError('Failed to read schema JSON file', { fileName: entry, error })
+            // Skip invalid JSON files
           }
-        } catch (error) {
-          logError('Failed to read schema JSON file', { fileName, error })
-          throw error
         }
-      })
-    )
+      } catch (error) {
+        logError('Failed to stat entry', { entry, error })
+      }
+    }
     
     logInfo('Successfully loaded schema JSON files', { schemaName, count: fileInfos.length })
     return { success: true, files: fileInfos }

@@ -1,0 +1,13 @@
+This is a sample text file for testing diff functionality.
+
+Line 2: Some different content here
+Line 3: More content
+Line 4: Modified information
+Line 5: Final line of the second file
+Line 6: Extra line added
+
+Configuration:
+- Setting A: disabled
+- Setting B: enabled
+- Setting C: auto
+- Setting D: new setting

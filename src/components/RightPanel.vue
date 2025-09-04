@@ -3,17 +3,23 @@
     <div class="right-panel-header">
       <div class="right-panel-title">
         {{ 
-          ui.isEditingSchema && appStore.currentSchema 
-            ? `Editing Schema: ${appStore.currentSchema.name}` 
-            : ui.isViewingSchema && appStore.currentSchema 
-              ? `Schema: ${appStore.currentSchema.name}` 
-              : appStore.currentJsonFile 
-                ? appStore.currentJsonFile.name 
-                : 'JSON Content Viewer' 
+          ui.isDiffMode
+            ? 'JSON File Comparison'
+            : ui.isEditingSchema && appStore.currentSchema 
+              ? `Editing Schema: ${appStore.currentSchema.name}` 
+              : ui.isViewingSchema && appStore.currentSchema 
+                ? `Schema: ${appStore.currentSchema.name}` 
+                : appStore.currentJsonFile 
+                  ? appStore.currentJsonFile.name 
+                  : 'JSON Content Viewer' 
         }}
       </div>
       <div class="right-panel-controls">
-        <div class="validation-status" v-if="ui.isEditingSchema && appStore.currentSchema">
+        <div class="validation-status" v-if="ui.isDiffMode">
+          <div class="status-icon diff"></div>
+          <span class="status-diff">Diff Mode</span>
+        </div>
+        <div class="validation-status" v-else-if="ui.isEditingSchema && appStore.currentSchema">
           <div class="status-icon editing"></div>
           <span class="status-editing">Editing Schema</span>
         </div>
@@ -60,9 +66,12 @@
       </div>
     </div>
     <div class="json-content">
+      <!-- Diff Viewer -->
+      <JsonDiffViewer v-if="ui.isDiffMode" />
+
       <!-- Schema Editor -->
       <AdvancedJsonEditor
-        v-if="ui.isEditingSchema && appStore.currentSchema"
+        v-else-if="ui.isEditingSchema && appStore.currentSchema"
         v-model="editSchemaContent"
         placeholder="Enter schema JSON..."
         @validation-change="handleSchemaValidationChange"
@@ -132,6 +141,7 @@ import { ValidationService } from '@/services/validationService'
 import { FileService } from '@/services/fileService'
 import JsonHighlight from './JsonHighlight.vue'
 import AdvancedJsonEditor from './AdvancedJsonEditor.vue'
+import JsonDiffViewer from './JsonDiffViewer.vue'
 import CopyIcon from './icons/CopyIcon.vue'
 import EditIcon from './icons/EditIcon.vue'
 import SaveIcon from './icons/SaveIcon.vue'
@@ -492,6 +502,19 @@ async function copySchemaToClipboard() {
 
 .status-editing {
   color: var(--linear-warning);
+  font-weight: 500;
+}
+
+/* Diff mode styles */
+.status-icon.diff {
+  width: 12px;
+  height: 12px;
+  background: var(--linear-info);
+  border-radius: 50%;
+}
+
+.status-diff {
+  color: var(--linear-info);
   font-weight: 500;
 }
 

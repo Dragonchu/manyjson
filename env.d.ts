@@ -9,6 +9,9 @@ declare module '*.vue' {
 interface Window {
   electronAPI?: {
     readFile: (filename: string) => Promise<any>
+    readTextFile: (filename: string) => Promise<{ success: boolean; content?: string; error?: string }>
+    getFileStats: (filePath: string) => Promise<{ success: boolean; isFile?: boolean; isDirectory?: boolean; size?: number; modified?: Date; error?: string }>
+    listDirectory: (dirPath: string) => Promise<{ success: boolean; entries?: Array<{ name: string; path: string; isFile: boolean; isDirectory: boolean; size: number; modified: Date }>; error?: string }>
     writeJsonFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>
     deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
     getConfigDirectory: () => Promise<{ success: boolean; path?: string; error?: string }>
