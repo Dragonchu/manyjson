@@ -149,23 +149,44 @@ function applyDiffHighlighting(html: string, diffData: { added: string[], remove
 }
 
 :deep(.json-key) {
-  color: #8b5cf6;
+  color: var(--apple-blue);
 }
 
 :deep(.json-string) {
-  color: #10b981;
+  color: var(--apple-green);
 }
 
 :deep(.json-number) {
-  color: #f59e0b;
+  color: var(--apple-orange);
 }
 
 :deep(.json-boolean) {
-  color: #ef4444;
+  color: var(--apple-red);
 }
 
 :deep(.json-null) {
-  color: #6b7280;
+  color: var(--apple-gray-1);
+}
+
+/* Dark mode adjustments for JSON highlighting */
+:root.theme-dark :deep(.json-key) {
+  color: #64d2ff;
+}
+
+:root.theme-dark :deep(.json-string) {
+  color: #6ac4dc;
+}
+
+:root.theme-dark :deep(.json-number) {
+  color: #d9c97c;
+}
+
+:root.theme-dark :deep(.json-boolean) {
+  color: #ff8a80;
+}
+
+:root.theme-dark :deep(.json-null) {
+  color: var(--apple-gray-2);
 }
 
 /* Diff highlighting styles */

@@ -377,7 +377,7 @@ watch(editContent, validateEditContent)
 }
 
 .action-btn.primary:hover {
-  background: var(--linear-accent-hover, #0066cc);
+  background: var(--accent-primary-hover);
 }
 
 .action-btn:disabled {

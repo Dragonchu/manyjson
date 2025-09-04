@@ -351,7 +351,7 @@ defineExpose({
 }
 
 .dialog {
-  background: var(--linear-bg-secondary, #111111);
+  background: var(--apple-bg-secondary);
   border: 1px solid var(--linear-border, rgba(255, 255, 255, 0.1));
   border-radius: 8px;
   width: 600px;
@@ -429,7 +429,7 @@ defineExpose({
   padding: 10px 12px;
   border: 1px solid var(--linear-border, rgba(255, 255, 255, 0.2));
   border-radius: 6px;
-  background: var(--linear-bg-primary, #0a0a0a);
+  background: var(--apple-bg-primary);
   color: var(--linear-text-primary, rgba(255, 255, 255, 0.95));
   font-size: 14px;
   font-family: inherit;
