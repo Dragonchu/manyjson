@@ -5,13 +5,23 @@ import App from './App.vue'
 import './style.css'
 import { useUIStore } from './stores/ui'
 
-// Create router for potential future routing needs
+// Application routes for stateful navigation
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     {
       path: '/',
       name: 'Home',
+      component: () => import('./views/Home.vue')
+    },
+    {
+      path: '/schema/:schemaName',
+      name: 'Schema',
+      component: () => import('./views/Home.vue')
+    },
+    {
+      path: '/schema/:schemaName/file/:fileName',
+      name: 'SchemaFile',
       component: () => import('./views/Home.vue')
     }
   ]
