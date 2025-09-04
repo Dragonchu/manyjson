@@ -278,7 +278,7 @@ watch(editContent, validateEditContent)
   justify-content: center;
   z-index: 1000;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s var(--apple-ease);
 }
 
 .popup-overlay.fade-in {
@@ -297,7 +297,7 @@ watch(editContent, validateEditContent)
   flex-direction: column;
   box-shadow: var(--apple-shadow-lg);
   transform: translateY(var(--spacing-lg)) scale(0.95); /* 20px */
-  transition: transform 0.3s ease;
+  transition: transform 0.3s var(--apple-ease);
 }
 
 .popup-window.slide-in {

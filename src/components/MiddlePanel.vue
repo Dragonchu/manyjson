@@ -312,7 +312,7 @@ onUnmounted(() => {
   border-radius: var(--radius-sm); /* 4px */
   outline: none;
   font-family: inherit;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s var(--apple-ease);
 }
 
 /* Inline input inherits apple-input styling with overrides */
