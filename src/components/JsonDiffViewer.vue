@@ -17,7 +17,7 @@
           </span>
         </div>
       </div>
-      <button class="close-diff-btn" @click="closeDiff" title="Close Diff View">
+      <button class="apple-btn plain small icon-only" @click="closeDiff" title="Close Diff View">
         ✕
       </button>
     </div>

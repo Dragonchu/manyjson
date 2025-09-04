@@ -20,19 +20,24 @@ const appStore = useUIStore()
 <style scoped>
 .status-bar {
   position: fixed;
-  bottom: 16px;
-  right: 16px;
-  background: var(--linear-bg-secondary);
-  border: 1px solid var(--linear-border);
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 12px;
-  color: var(--linear-text-secondary);
+  bottom: 20px;
+  right: 20px;
+  background: var(--apple-bg-primary);
+  border: 1px solid var(--apple-border);
+  border-radius: 12px; /* Apple HIG standard radius */
+  padding: 12px 16px; /* Increased padding for better touch target */
+  font-size: 14px; /* Improved readability */
+  color: var(--apple-text-primary);
   opacity: 0;
   transform: translateY(10px);
-  transition: var(--linear-transition);
+  transition: var(--apple-transition);
   z-index: 1000;
-  max-width: 300px;
+  max-width: 320px;
+  min-height: 44px; /* Apple HIG minimum touch target */
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(20px); /* Apple-style backdrop blur */
+  box-shadow: var(--apple-shadow-md);
 }
 
 .status-bar.show {

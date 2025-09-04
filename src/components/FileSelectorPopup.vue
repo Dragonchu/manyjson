@@ -3,7 +3,7 @@
     <div class="popup-container">
       <div class="popup-header">
         <h3>Select File to Compare With</h3>
-        <button class="close-btn" @click="close">×</button>
+        <button class="apple-btn plain small icon-only" @click="close">×</button>
       </div>
       
       <div class="popup-content">
@@ -11,17 +11,17 @@
           <strong>Comparing:</strong> {{ sourceFile?.name }}
         </div>
         
-        <div class="file-selection-tabs">
+        <div class="apple-segmented-control file-selection-tabs">
           <button 
-            class="tab-btn" 
-            :class="{ active: activeTab === 'project' }"
+            class="apple-segment" 
+            :class="{ selected: activeTab === 'project' }"
             @click="activeTab = 'project'"
           >
             Project Files
           </button>
           <button 
-            class="tab-btn" 
-            :class="{ active: activeTab === 'external' }"
+            class="apple-segment" 
+            :class="{ selected: activeTab === 'external' }"
             @click="activeTab = 'external'"
           >
             Browse Files
@@ -35,11 +35,11 @@
               <span class="schema-name">{{ schema.name }}</span>
               <span class="file-count">({{ getSchemaFiles(schema).length }} files)</span>
             </div>
-            <div class="file-list">
+            <div class="apple-list file-list">
               <div 
                 v-for="file in getSchemaFiles(schema)" 
                 :key="file.path"
-                class="file-item"
+                class="apple-list-item file-item"
                 :class="{ 
                   selected: selectedFile?.path === file.path,
                   disabled: file.path === sourceFile?.path 
@@ -63,7 +63,7 @@
         <!-- External Files Tab -->
         <div v-if="activeTab === 'external'" class="external-files-section">
           <div class="browse-section">
-            <button class="browse-btn" @click="browseForFile">
+            <button class="apple-btn tinted" @click="browseForFile">
               📁 Browse for File
             </button>
             <div v-if="externalFile" class="selected-external-file">
@@ -73,7 +73,7 @@
               </div>
             </div>
             <!-- Test button for debugging -->
-            <button class="test-btn" @click="testDiffWithSampleFile" style="margin-top: 10px;">
+            <button class="apple-btn plain small" @click="testDiffWithSampleFile" style="margin-top: 10px;">
               🧪 Test Diff (Debug)
             </button>
           </div>
@@ -81,9 +81,9 @@
       </div>
       
       <div class="popup-footer">
-        <button class="btn secondary" @click="close">Cancel</button>
+        <button class="apple-btn bordered" @click="close">Cancel</button>
         <button 
-          class="btn primary" 
+          class="apple-btn filled" 
           :disabled="!canCompare"
           @click="startComparison"
         >
@@ -374,25 +374,7 @@ onUnmounted(() => {
   color: var(--linear-text-primary);
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--linear-text-secondary);
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: var(--linear-border);
-  color: var(--linear-text-primary);
-}
+/* Close button now uses apple-btn system */
 
 .popup-content {
   padding: 20px;
@@ -416,27 +398,7 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--linear-border);
 }
 
-.tab-btn {
-  flex: 1;
-  padding: 12px 16px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--linear-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab-btn.active {
-  color: var(--linear-accent);
-  border-bottom-color: var(--linear-accent);
-}
-
-.tab-btn:hover:not(.active) {
-  color: var(--linear-text-primary);
-}
+/* Tab buttons now use apple-segmented-control system */
 
 .schema-section {
   margin-bottom: 16px;
@@ -471,62 +433,30 @@ onUnmounted(() => {
   margin-left: 12px;
 }
 
-.file-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 13px;
-}
-
-.file-item:hover:not(.disabled) {
-  background: var(--linear-border);
-}
-
-.file-item.selected {
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid var(--linear-accent);
-}
-
+/* File items now use apple-list-item system with custom overrides */
 .file-item.disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 .file-name {
-  color: var(--linear-text-primary);
+  color: var(--apple-text-primary);
+  font-weight: 500;
 }
 
 .file-status.valid {
-  color: var(--linear-success);
+  color: var(--accent-success);
 }
 
 .file-status.invalid {
-  color: var(--linear-error);
+  color: var(--accent-error);
 }
 
 .browse-section {
   text-align: center;
 }
 
-.browse-btn {
-  background: var(--linear-accent);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.browse-btn:hover {
-  background: var(--linear-accent-hover);
-}
+/* Browse button now uses apple-btn tinted system */
 
 .selected-external-file {
   margin-top: 16px;
@@ -576,37 +506,5 @@ onUnmounted(() => {
   background: var(--linear-bg-secondary);
 }
 
-.btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid var(--linear-border);
-}
-
-.btn.secondary {
-  background: var(--linear-surface);
-  color: var(--linear-text-primary);
-}
-
-.btn.secondary:hover {
-  background: var(--linear-border);
-}
-
-.btn.primary {
-  background: var(--linear-accent);
-  color: white;
-  border-color: var(--linear-accent);
-}
-
-.btn.primary:hover:not(:disabled) {
-  background: var(--linear-accent-hover);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Legacy button styles replaced with apple-btn system */
 </style>

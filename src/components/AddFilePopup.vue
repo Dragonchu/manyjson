@@ -25,7 +25,7 @@
             </div>
             <div class="popup-actions">
               <button 
-                class="action-btn primary" 
+                class="apple-btn filled small icon-only" 
                 @click="saveJsonFile"
                 :disabled="false"
                 :title="getButtonTooltip()"
@@ -33,7 +33,7 @@
                 <SaveIcon />
               </button>
               <button 
-                class="action-btn" 
+                class="apple-btn plain small icon-only" 
                 @click="closePopup"
                 title="Cancel"
               >
@@ -46,12 +46,12 @@
         <!-- File Name Input -->
         <div class="file-name-section">
           <label for="fileName">File Name:</label>
-          <input 
+                      <input 
             id="fileName"
             v-model="fileName"
             type="text"
             placeholder="Enter file name (e.g., data.json)"
-            class="file-name-input"
+            class="apple-input"
             @keyup.enter="saveJsonFile"
           />
         </div>
