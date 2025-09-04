@@ -1,0 +1,38 @@
+{
+  "user": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@company.com",
+    "age": 31,
+    "skills": ["JavaScript", "Python", "TypeScript", "Go"],
+    "address": {
+      "street": "456 New Avenue",
+      "city": "Anytown",
+      "zipcode": "12345",
+      "country": "USA"
+    },
+    "projects": [
+      {
+        "name": "Project Alpha",
+        "status": "completed",
+        "technologies": ["React", "Node.js"]
+      },
+      {
+        "name": "Project Beta",
+        "status": "completed",
+        "technologies": ["Vue", "Express", "MongoDB"]
+      },
+      {
+        "name": "Project Gamma",
+        "status": "planning",
+        "technologies": ["Next.js", "PostgreSQL"]
+      }
+    ],
+    "department": "Engineering"
+  },
+  "metadata": {
+    "created": "2024-01-01",
+    "updated": "2024-09-04",
+    "version": "1.1.0"
+  }
+}

@@ -37,6 +37,7 @@ export const useAppStore = defineStore('app', () => {
   const jsonFiles = ref<JsonFile[]>([])
   const originalJsonContent = ref<string | null>(null)
   const originalSchemaContent = ref<string | null>(null)
+  const originalFileContentForDiff = ref<any>(null)
 
   // Computed
   const hasCurrentSchema = computed(() => currentSchema.value !== null)
@@ -54,6 +55,12 @@ export const useAppStore = defineStore('app', () => {
 
   function setCurrentJsonFile(file: JsonFile | null) {
     currentJsonFile.value = file
+    // Store original content for diff comparison
+    if (file) {
+      originalFileContentForDiff.value = JSON.parse(JSON.stringify(file.content))
+    } else {
+      originalFileContentForDiff.value = null
+    }
   }
 
   // Lightweight local state mutation for composables/services
@@ -658,6 +665,7 @@ export const useAppStore = defineStore('app', () => {
     jsonFiles,
     originalJsonContent,
     originalSchemaContent,
+    originalFileContentForDiff,
     
     // Computed
     hasCurrentSchema,

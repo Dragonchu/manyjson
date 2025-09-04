@@ -8,6 +8,7 @@ export const useUIStore = defineStore('ui', () => {
   const isEditMode = ref(false)
   const isViewingSchema = ref(false)
   const isEditingSchema = ref(false)
+  const isDiffMode = ref(false)
 
   // Status messaging
   const statusMessage = ref('')
@@ -18,6 +19,7 @@ export const useUIStore = defineStore('ui', () => {
     if (enabled) {
       isViewingSchema.value = false
       isEditingSchema.value = false
+      isDiffMode.value = false
     }
   }
 
@@ -26,6 +28,7 @@ export const useUIStore = defineStore('ui', () => {
     if (enabled) {
       isEditMode.value = false
       isEditingSchema.value = false
+      isDiffMode.value = false
     }
   }
 
@@ -34,6 +37,16 @@ export const useUIStore = defineStore('ui', () => {
     if (enabled) {
       isEditMode.value = false
       isViewingSchema.value = false
+      isDiffMode.value = false
+    }
+  }
+
+  function setDiffMode(enabled: boolean) {
+    isDiffMode.value = enabled
+    if (enabled) {
+      isEditMode.value = false
+      isViewingSchema.value = false
+      isEditingSchema.value = false
     }
   }
 
@@ -49,11 +62,13 @@ export const useUIStore = defineStore('ui', () => {
     isEditMode,
     isViewingSchema,
     isEditingSchema,
+    isDiffMode,
     statusMessage,
     statusType,
     setEditMode,
     setSchemaViewMode,
     setSchemaEditMode,
+    setDiffMode,
     showStatus,
   }
 })

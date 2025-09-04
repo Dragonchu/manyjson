@@ -7,6 +7,8 @@
             ? `Editing Schema: ${appStore.currentSchema.name}` 
             : ui.isViewingSchema && appStore.currentSchema 
               ? `Schema: ${appStore.currentSchema.name}` 
+              : ui.isDiffMode && appStore.currentJsonFile
+                ? `Diff View: ${appStore.currentJsonFile.name}`
               : appStore.currentJsonFile 
                 ? appStore.currentJsonFile.name 
                 : 'JSON Content Viewer' 
@@ -20,6 +22,10 @@
         <div class="validation-status" v-else-if="ui.isViewingSchema && appStore.currentSchema">
           <div class="status-icon schema"></div>
           <span class="status-schema">Schema Definition</span>
+        </div>
+        <div class="validation-status" v-else-if="ui.isDiffMode && appStore.currentJsonFile">
+          <div class="status-icon diff"></div>
+          <span class="status-diff">Comparing Changes</span>
         </div>
         <div class="validation-status" v-else-if="appStore.currentJsonFile">
           <div 
@@ -47,13 +53,19 @@
           <button class="action-btn" @click="copyToClipboard" title="Copy JSON">
             <CopyIcon />
           </button>
-          <button class="action-btn" @click="toggleEditMode" title="Edit JSON" v-if="!ui.isEditMode">
+          <button class="action-btn" @click="toggleEditMode" title="Edit JSON" v-if="!ui.isEditMode && !ui.isDiffMode">
             <EditIcon />
           </button>
-          <button class="action-btn primary" @click="saveChanges" title="Save Changes" v-if="ui.isEditMode">
+          <button class="action-btn" @click="toggleDiffMode" title="Show Diff" v-if="ui.isEditMode">
+            <DiffIcon />
+          </button>
+          <button class="action-btn primary" @click="saveChanges" title="Save Changes" v-if="ui.isEditMode && !ui.isDiffMode">
             <SaveIcon />
           </button>
           <button class="action-btn" @click="cancelEdit" title="Cancel Edit" v-if="ui.isEditMode">
+            <CancelIcon />
+          </button>
+          <button class="action-btn" @click="exitDiffMode" title="Exit Diff View" v-if="ui.isDiffMode">
             <CancelIcon />
           </button>
         </div>
@@ -103,9 +115,16 @@
         <JsonHighlight :json="appStore.currentJsonFile.content" />
       </div>
 
+      <!-- JSON Diff Viewer -->
+      <JsonDiffViewer
+        v-else-if="appStore.currentJsonFile && ui.isDiffMode"
+        :original-content="appStore.originalFileContentForDiff"
+        :modified-content="editContent"
+      />
+
       <!-- JSON Editor -->
       <AdvancedJsonEditor
-        v-else-if="appStore.currentJsonFile && ui.isEditMode"
+        v-else-if="appStore.currentJsonFile && ui.isEditMode && !ui.isDiffMode"
         v-model="editContent"
         :schema="appStore.currentSchema?.content"
         placeholder="Enter JSON content..."
@@ -132,10 +151,12 @@ import { ValidationService } from '@/services/validationService'
 import { FileService } from '@/services/fileService'
 import JsonHighlight from './JsonHighlight.vue'
 import AdvancedJsonEditor from './AdvancedJsonEditor.vue'
+import JsonDiffViewer from './JsonDiffViewer.vue'
 import CopyIcon from './icons/CopyIcon.vue'
 import EditIcon from './icons/EditIcon.vue'
 import SaveIcon from './icons/SaveIcon.vue'
 import CancelIcon from './icons/CancelIcon.vue'
+import DiffIcon from './icons/DiffIcon.vue'
 
 const appStore = useAppStore()
 const ui = useUIStore()
@@ -176,8 +197,19 @@ function toggleEditMode() {
 
 function cancelEdit() {
   ui.setEditMode(false)
+  ui.setDiffMode(false)
   editContent.value = ''
   editErrors.value = []
+}
+
+function toggleDiffMode() {
+  if (ui.isEditMode && appStore.currentJsonFile) {
+    ui.setDiffMode(true)
+  }
+}
+
+function exitDiffMode() {
+  ui.setDiffMode(false)
 }
 
 async function saveChanges() {
@@ -492,6 +524,18 @@ async function copySchemaToClipboard() {
 
 .status-editing {
   color: var(--linear-warning);
+  font-weight: 500;
+}
+
+.status-icon.diff {
+  width: 12px;
+  height: 12px;
+  background: var(--linear-primary);
+  border-radius: 50%;
+}
+
+.status-diff {
+  color: var(--linear-primary);
   font-weight: 500;
 }
 
