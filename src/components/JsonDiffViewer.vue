@@ -255,7 +255,7 @@ function closeDiff() {
   color: var(--linear-text-secondary);
   padding: 8px;
   border-radius: 6px;
-  transition: all 0.2s;
+  transition: all 0.2s var(--apple-ease);
 }
 
 .close-diff-btn:hover {

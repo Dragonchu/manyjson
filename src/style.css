@@ -92,8 +92,10 @@
   --apple-font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'JetBrains Mono', monospace;
   
   /* Animation */
-  --apple-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --apple-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --apple-transition: all 0.3s var(--apple-ease);
+  --apple-transition-fast: all 0.15s var(--apple-ease);
+  --apple-spring-duration: 400ms;
   
   /* 8pt Grid System - Apple HIG Spacing Standards */
   --space-1: 4px;    /* 0.5 units */
@@ -1061,7 +1063,7 @@ body {
   height: 100%;
   background: var(--accent-primary);
   border-radius: 3px;
-  transition: width 0.3s ease;
+  transition: width 0.3s var(--apple-ease);
 }
 
 .apple-progress.indeterminate .apple-progress-bar {
