@@ -143,6 +143,7 @@ import JsonHighlight from './JsonHighlight.vue'
 import AdvancedJsonEditor from './AdvancedJsonEditor.vue'
 import JsonDiffViewer from './JsonDiffViewer.vue'
 import CopyIcon from './icons/CopyIcon.vue'
+import { useCapability } from '@/composables/useCapability'
 import EditIcon from './icons/EditIcon.vue'
 import SaveIcon from './icons/SaveIcon.vue'
 import CancelIcon from './icons/CancelIcon.vue'
@@ -151,6 +152,7 @@ const appStore = useAppStore()
 const ui = useUIStore()
 const validationService = new ValidationService()
 const fileService = new FileService()
+const { copyText } = useCapability()
 const editContent = ref('')
 const editErrors = ref<any[]>([])
 const editSchemaContent = ref('')
@@ -283,7 +285,7 @@ async function copyToClipboard() {
   
   try {
     const content = JSON.stringify(appStore.currentJsonFile.content, null, 2)
-    await navigator.clipboard.writeText(content)
+    await copyText(content)
     ui.showStatus('JSON copied to clipboard', 'success')
   } catch (error) {
     ui.showStatus('Failed to copy to clipboard', 'error')
@@ -295,7 +297,7 @@ async function copySchemaToClipboard() {
   
   try {
     const content = JSON.stringify(appStore.currentSchema.content, null, 2)
-    await navigator.clipboard.writeText(content)
+    await copyText(content)
     ui.showStatus('Schema copied to clipboard', 'success')
   } catch (error) {
     ui.showStatus('Failed to copy schema to clipboard', 'error')
