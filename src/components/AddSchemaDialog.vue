@@ -63,10 +63,12 @@ import { ref, computed, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import { useSchemaManager } from '@/composables/useSchemaManager'
+import { useCapability } from '@/composables/useCapability'
 
 const appStore = useAppStore()
 const ui = useUIStore()
 const manager = useSchemaManager()
+const { runtime } = useCapability()
 
 const isVisible = ref(false)
 const schemaName = ref('')
@@ -275,7 +277,7 @@ async function handleSubmit() {
     schemaName: schemaName.value,
     contentLength: schemaContentText.value.length,
     hasValidContent: !!parsedContent.value,
-    hasElectronAPI: !!window.electronAPI
+    platform: runtime.name
   })
   
   if (!validateForm()) {
@@ -288,10 +290,8 @@ async function handleSubmit() {
   try {
     logInfo('Calling appStore.addSchema')
     
-    // Check if electronAPI is available
-    if (!window.electronAPI) {
-      logError('electronAPI is not available - running in web mode')
-      ui.showStatus('Running in web mode - schemas will not be saved permanently', 'info')
+    if (runtime.name === 'web') {
+      ui.showStatus('Web 模式：数据仅临时保存。桌面版支持持久化。', 'info')
     }
 
     const success = await manager.addSchema(schemaName.value, parsedContent.value)
@@ -314,7 +314,7 @@ async function handleSubmit() {
     logError('Detailed error info', {
       message: errorMessage,
       stack: errorDetails,
-      hasElectronAPI: !!window.electronAPI,
+      platform: runtime.name,
       schemaName: schemaName.value,
       contentLength: schemaContentText.value.length
     })

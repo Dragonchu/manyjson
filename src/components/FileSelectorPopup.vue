@@ -98,9 +98,11 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAppStore, type JsonFile } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
+import { getPlatformRuntime } from '@/platform/runtime'
 
 const appStore = useAppStore()
 const ui = useUIStore()
+const runtime = getPlatformRuntime()
 
 const isVisible = ref(false)
 const sourceFile = ref<JsonFile | null>(null)
@@ -146,14 +148,14 @@ function selectFile(file: JsonFile) {
 async function browseForFile() {
   console.log('browseForFile called')
   
-  if (!window.electronAPI) {
-    ui.showStatus('File browsing not available in web mode. Please use Electron version.', 'error')
+  if (runtime.name === 'web') {
+    ui.showStatus('Web 模式不支持本地文件浏览，请使用桌面版。', 'error')
     return
   }
   
   try {
     console.log('Showing open dialog...')
-    const result = await window.electronAPI.showOpenDialog({
+    const result = await runtime.apis.showOpenDialog({
       title: 'Select file to compare',
       filters: [
         { name: 'All Files', extensions: ['*'] }
@@ -169,11 +171,11 @@ async function browseForFile() {
       // First check if it's actually a file (not a directory)
       try {
         // Check if the new APIs are available
-        if (!window.electronAPI.getFileStats || !window.electronAPI.readTextFile) {
+        if (!runtime.apis.getFileStats || !runtime.apis.readTextFile) {
           console.log('New APIs not available, falling back to basic file reading')
           // Fallback to basic file reading
           try {
-            const content = await window.electronAPI.readFile(filePath)
+            const content = await runtime.apis.readFile(filePath)
             const fileName = filePath.split(/[/\\]/).pop() || 'Unknown'
             
             externalFile.value = {
@@ -189,7 +191,7 @@ async function browseForFile() {
           }
         }
         
-        const stats = await window.electronAPI.getFileStats(filePath)
+        const stats = await runtime.apis.getFileStats(filePath)
         if (!stats.success) {
           ui.showStatus('Failed to get file information', 'error')
           return
@@ -201,7 +203,7 @@ async function browseForFile() {
         }
         
         // Read file content
-        const textResult = await window.electronAPI.readTextFile(filePath)
+        const textResult = await runtime.apis.readTextFile(filePath)
         if (!textResult.success) {
           ui.showStatus('Failed to read selected file', 'error')
           return

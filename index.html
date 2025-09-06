@@ -9,6 +9,11 @@
 </head>
 <body>
   <div id="app"></div>
-  <script type="module" src="/src/main.ts"></script>
+  <script type="module">
+    // Choose entry based on environment variable injected at build time
+    const target = import.meta.env?.VITE_APP_TARGET || (window.electronAPI ? 'desktop' : 'web')
+    const entry = target === 'desktop' ? '/src/main-desktop.ts' : '/src/main-web.ts'
+    import(entry)
+  </script>
 </body>
 </html>
