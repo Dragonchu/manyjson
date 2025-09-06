@@ -1,10 +1,12 @@
-import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import electron from 'vite-plugin-electron'
 import { resolve } from 'path'
+import { defineConfig } from 'vite'
+import electron from 'vite-plugin-electron'
 
 export default defineConfig(({ mode }) => {
   const isDesktop = process.env.BUILD_TARGET === 'desktop'
+  const isWeb = process.env.BUILD_TARGET === 'web'
+
   return {
     plugins: [
       vue(),
@@ -53,10 +55,15 @@ export default defineConfig(({ mode }) => {
         '@': resolve(__dirname, 'src')
       }
     },
-    base: './',
+    base: isWeb ? '/' : './',
     build: {
       outDir: 'dist',
-      emptyOutDir: true
+      emptyOutDir: true,
+      rollupOptions: isWeb ? {
+        input: {
+          main: resolve(__dirname, 'index-web.html')
+        }
+      } : undefined
     }
   }
 })

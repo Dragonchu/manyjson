@@ -1,0 +1,12 @@
+{
+    "name": "manyjson-worker",
+    "compatibility_date": "2025-01-06",
+    "main": "src/worker.ts",
+    "build": {
+        "command": "npm run build:web"
+    },
+    "assets": {
+        "directory": "dist",
+        "binding": "ASSETS"
+    }
+}

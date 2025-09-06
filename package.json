@@ -17,7 +17,9 @@
     "electron:build": "npm run build:desktop && electron-builder",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "clean": "rm -rf node_modules dist dist-electron out release"
+    "clean": "rm -rf node_modules dist dist-electron out release",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "npm run build:web && wrangler deploy"
   },
   "build": {
     "appId": "com.manyjson.app",
@@ -103,6 +105,8 @@
     "vite": "^5.4.19",
     "vite-plugin-electron": "^0.15.0",
     "vitest": "^1.0.0",
-    "wait-on": "^7.2.0"
+    "wait-on": "^7.2.0",
+    "wrangler": "^3.78.0",
+    "@cloudflare/workers-types": "^4.20241218.0"
   }
 }

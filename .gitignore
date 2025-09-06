@@ -80,3 +80,5 @@ pnpm-debug.log*
 core
 
 git-commit.sh
+.wrangler/
+dist-electron/
