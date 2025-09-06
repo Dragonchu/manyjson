@@ -1,5 +1,5 @@
 {
-    "name": "manyjson-worker",
+    "name": "manyjson",
     "compatibility_date": "2025-01-06",
     "main": "src/worker.ts",
     "build": {
