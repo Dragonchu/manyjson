@@ -4,6 +4,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
 import './style.css'
 import { useUIStore } from './stores/ui'
+import { applySeoMeta } from './seo'
 
 const router = createRouter({
 	history: createWebHashHistory(),
@@ -24,4 +25,15 @@ const uiStore = useUIStore()
 uiStore.initializeTheme()
 uiStore.initializeLayout()
 uiStore.initializeKeyboardShortcuts()
+
+// Basic per-route SEO
+router.afterEach((to) => {
+  const routeName = to.name?.toString() || 'Home'
+  const paramsTitle = Object.values(to.params).flat().join(' / ')
+  const titleSuffix = paramsTitle ? ` - ${paramsTitle}` : ''
+  applySeoMeta({
+    title: `${routeName}${titleSuffix} | ManyJson`,
+    description: 'ManyJson – JSON Schema and JSON file manager for productive workflows.'
+  })
+})
 
