@@ -129,3 +129,25 @@ Potential improvements that could be added:
 5. Import from clipboard functionality
 6. Drag and drop support for the popup
 7. Resizable popup window
+
+## 任务总纲（LC-88 支持 Web 模式下新增 Schema）
+
+### 简介
+在 Web 模式（无本地文件系统能力）下，支持通过应用内对话框新增 JSON Schema，并在内存与本地存储降级策略下正常工作；桌面模式继续持久化到配置目录。
+
+### To-Do 列表
+- 子任务：阅读 /doc 并提炼约束（已完成）
+  - 执行步骤：通读 `/doc` 下文档，确认存储策略与平台能力差异。
+- 子任务：分析现有 Schema 与 Web 模式实现（已完成）
+  - 执行步骤：检查 `src/stores/app.ts`、`src/platform/web.ts`、`src/composables/useSchemaManager.ts`。
+- 子任务：设计 Web 新增 Schema 流程（已完成）
+  - 执行步骤：前端表单校验 → 委托 store 统一处理（Electron 持久化 / Web 内存）。
+- 子任务：实现前端对接（已完成）
+  - 执行步骤：更新 `useSchemaManager.ts`，改为调用 `appStore.addSchema` 并保留 UI 校验、提示。
+- 子任务：更新文档与 .gitignore（进行中）
+  - 执行步骤：补充本节说明；检查忽略生成物配置。
+
+### 附注
+- Web 模式下 `writeConfigFile` 为非持久降级，store 已内置分支：Electron 持久化，Web 使用内存与 `localStorage` 关联数据。
+- 新增 Schema 的 UI 入口为 `src/components/AddSchemaDialog.vue`，校验与模板功能保持不变。
+- 关键变更：`src/composables/useSchemaManager.ts` 由直接写文件改为委托 `appStore.addSchema`，从而继承平台差异处理逻辑。

@@ -1,4 +1,4 @@
-import { useAppStore } from '@/stores/app'
+import { useAppStore, type SchemaInfo } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import { FileService } from '@/services/fileService'
 import { ValidationService } from '@/services/validationService'
@@ -12,7 +12,7 @@ export function useSchemaManager() {
   async function addSchema(name: string, content: any): Promise<boolean> {
     const finalName = name.endsWith('.json') ? name : `${name}.json`
 
-    if (appStore.schemas.some(s => s.name === finalName)) {
+    if (appStore.schemas.some((s: SchemaInfo) => s.name === finalName)) {
       ui.showStatus('A schema with this name already exists', 'error')
       return false
     }
@@ -23,13 +23,13 @@ export function useSchemaManager() {
       return false
     }
 
-    const write = await fileService.writeConfigFile(finalName, JSON.stringify(content, null, 2))
-    if (!write.success || !write.filePath) {
-      ui.showStatus(`Failed to save schema: ${write.error || 'Unknown error'}`, 'error')
+    // Delegate to store, which handles both Electron (persist) and Web (in-memory) modes
+    const created = await appStore.addSchema(finalName, content)
+    if (!created) {
+      ui.showStatus('Failed to create schema', 'error')
       return false
     }
 
-    appStore.addSchemaLocal({ name: finalName, path: write.filePath, content })
     ui.showStatus(`Schema "${finalName}" created successfully`, 'success')
     return true
   }
