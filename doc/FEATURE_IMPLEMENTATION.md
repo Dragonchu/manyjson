@@ -151,3 +151,39 @@ Potential improvements that could be added:
 - Web 模式下 `writeConfigFile` 为非持久降级，store 已内置分支：Electron 持久化，Web 使用内存与 `localStorage` 关联数据。
 - 新增 Schema 的 UI 入口为 `src/components/AddSchemaDialog.vue`，校验与模板功能保持不变。
 - 关键变更：`src/composables/useSchemaManager.ts` 由直接写文件改为委托 `appStore.addSchema`，从而继承平台差异处理逻辑。
+
+## 任务总纲（LC-89 支持 Web 模式读取/写入用户磁盘上的 Schema）
+
+### 简介
+在 Web 模式下，允许用户通过浏览器的 File System Access API 从本地磁盘导入 Schema（读取）并保存 Schema/JSON（写入）。对不支持该 API 的浏览器自动回退为下载文件（写入）与保持内存态/LocalStorage（读取）。
+
+### 核心改动
+- `src/platform/web.ts`
+  - 实现基于 File System Access API 的读/写：
+    - 通过 `showOpenFilePicker` 导入，注册 `fs://<id>/<name>` 形式的虚拟路径，句柄保存在内存 `Map`。
+    - `readFile/readTextFile` 支持上述 `fs://` 路径读取。
+    - `writeJsonFile`：优先写回已有句柄；无句柄时 `showSaveFilePicker` 选择保存位置；不支持时回退为触发浏览器下载。
+  - 暴露 `showOpenDialog` 以在 Web 端选择本地文件。
+- `src/stores/app.ts`
+  - 新增 `persistSchemasWeb()`，将 Web 端的 schema 列表保存在 `localStorage`。
+  - `addSchema(name, content, { path? })` 支持传入来源路径（如 `fs://...`），Web 下写入后持久化到 LocalStorage。
+  - `loadSchemas()` 在 Web 端优先从 LocalStorage 还原。
+- `src/components/AppSidebar.vue`
+  - 新增 “Import” 按钮，调用平台封装的 `showOpenDialog`，读取选中文件、解析为 JSON，并通过 `appStore.addSchema` 加入。
+- `src/components/RightPanel.vue`
+  - 保存 JSON 后，如 Web 写入返回了新的 `filePath`（`fs://...`），更新当前文件的路径。
+
+### 兼容与降级
+- 支持 API 的浏览器：完整读/写（持有用户授权的文件句柄，路径以 `fs://` 形式引用）。
+- 不支持 API 的浏览器：
+  - 读取：暂不直接读取磁盘文件，用户可用“新增 Schema”粘贴内容或通过未来的拖拽/上传方案扩展。
+  - 写入：回退为浏览器下载。
+- Electron 桌面端：不受影响，继续使用原 IPC。
+
+### 数据持久性（Web）
+- Schema 列表与内容：存储于 `localStorage.schemas`。
+- Schema-File 关联：沿用 `localStorage.schema-associations`。
+
+### 已知限制
+- 文件句柄仅在当前会话有效，刷新后需重新授权；我们用 `localStorage` 记住元信息，但不储存句柄。
+- `listSchemaJsonFiles` 在纯 Web 下仍为空（未实现跨目录枚举）。可进一步扩展为选择目录并缓存句柄。
