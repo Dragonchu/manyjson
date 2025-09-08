@@ -82,3 +82,5 @@ core
 git-commit.sh
 .wrangler/
 dist-electron/
+schema-associations.json
+*.local.json
