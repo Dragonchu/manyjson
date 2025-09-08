@@ -91,7 +91,12 @@ Sitemap: https://your-domain.example/sitemap.xml
 
 ## 6) 后续任务建议
 
-- [ ] 若上线 Web 端：提供 `public/robots.txt` 和构建期 `sitemap.xml` 生成脚本
+- [x] 若上线 Web 端：提供 `public/robots.txt` 和构建期 `sitemap.xml` 生成脚本
+  - 新增 `scripts/generate-sitemap.mjs`，在 `build:web` 后执行，读取 `SITE_URL` 环境变量生成 `dist/sitemap.xml` 与 `dist/robots.txt`
+  - 同时提供默认 `public/robots.txt`
+- [x] 扩展 `SeoMeta`：`canonical`、`alternates`、`keywords`
+  - `src/types/seo.ts` 与 `src/seo.ts` 已支持并在运行时注入 `<meta keywords>`、`<link rel=canonical>`、`<link rel=alternate hreflang=...>`
+- [x] 为主要页面补充定制化 `applySeoMeta` 调用（更精准的标题/描述）
+  - 在 `src/main-web.ts`/`src/main-desktop.ts` 的 `router.afterEach` 中对 `Schema`、`SchemaFile` 等路由设置更具体的标题与描述
 - [ ] 路由改为 `history`（若后端/托管允许），或对核心页面进行预渲染
-- [ ] 扩展 `SeoMeta`：`canonical`、`alternates`、`keywords`
-- [ ] 为主要页面补充定制化 `applySeoMeta` 调用（更精准的标题/描述）
+  - 已支持通过 `VITE_HISTORY_MODE=history` 在 Web 端启用 `createWebHistory()`（默认仍为 `hash`）

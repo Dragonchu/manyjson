@@ -9,7 +9,7 @@
     "dev:web": "cross-env VITE_APP_TARGET=web BUILD_TARGET=web vite",
     "dev:desktop": "cross-env VITE_APP_TARGET=desktop BUILD_TARGET=desktop vite",
     "build": "vite build",
-    "build:web": "cross-env VITE_APP_TARGET=web BUILD_TARGET=web vite build",
+    "build:web": "cross-env VITE_APP_TARGET=web BUILD_TARGET=web vite build && node ./scripts/generate-sitemap.mjs",
     "build:desktop": "cross-env VITE_APP_TARGET=desktop BUILD_TARGET=desktop vite build",
     "preview": "vite preview",
     "electron": "electron .",
