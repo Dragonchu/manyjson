@@ -45,5 +45,34 @@ export function applySeoMeta(meta: SeoMeta = {}) {
 	setTag('twitter:title', meta.twitter?.title || title)
 	setTag('twitter:description', meta.twitter?.description || meta.description || DEFAULT_DESCRIPTION)
 	if (meta.twitter?.image) setTag('twitter:image', meta.twitter.image)
+
+	// keywords
+	if (meta.keywords && meta.keywords.length > 0) {
+		setTag('keywords', meta.keywords.join(', '))
+	}
+
+	// canonical link
+	if (meta.canonical) {
+		let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null
+		if (!link) {
+			link = document.createElement('link')
+			link.setAttribute('rel', 'canonical')
+			document.head.appendChild(link)
+		}
+		link.setAttribute('href', meta.canonical)
+	}
+
+	// alternates (hreflang)
+	if (meta.alternates && meta.alternates.length > 0) {
+		// Remove existing alternates to avoid duplicates
+		document.querySelectorAll('link[rel="alternate"]').forEach((n) => n.parentElement?.removeChild(n))
+		for (const alt of meta.alternates) {
+			const link = document.createElement('link')
+			link.setAttribute('rel', 'alternate')
+			link.setAttribute('hreflang', alt.hrefLang)
+			link.setAttribute('href', alt.href)
+			document.head.appendChild(link)
+		}
+	}
 }
 

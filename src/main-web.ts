@@ -1,13 +1,14 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import './style.css'
 import { useUIStore } from './stores/ui'
 import { applySeoMeta } from './seo'
 
+const useHistory = (import.meta as any).env?.VITE_HISTORY_MODE === 'history'
 const router = createRouter({
-	history: createWebHashHistory(),
+	history: useHistory ? createWebHistory() : createWebHashHistory(),
 	routes: [
 		{ path: '/', name: 'Home', component: () => import('./views/Home.vue') },
 		{ path: '/schema/:schemaName', name: 'Schema', component: () => import('./views/Home.vue') },
@@ -26,14 +27,38 @@ uiStore.initializeTheme()
 uiStore.initializeLayout()
 uiStore.initializeKeyboardShortcuts()
 
-// Basic per-route SEO
+// Enhanced per-route SEO
 router.afterEach((to) => {
-  const routeName = to.name?.toString() || 'Home'
-  const paramsTitle = Object.values(to.params).flat().join(' / ')
-  const titleSuffix = paramsTitle ? ` - ${paramsTitle}` : ''
-  applySeoMeta({
-    title: `${routeName}${titleSuffix} | ManyJson`,
-    description: 'ManyJson – JSON Schema and JSON file manager for productive workflows.'
-  })
+	const schemaName = (to.params as any).schemaName as string | undefined
+	const fileName = (to.params as any).fileName as string | undefined
+
+	let title = 'Home | ManyJson'
+	let description = 'Manage JSON Schemas and JSON files efficiently with a clean, productive UI.'
+	let keywords: string[] | undefined
+
+	if (to.name === 'Schema' && schemaName) {
+		title = `Schema - ${schemaName} | ManyJson`
+		description = `View and validate JSON against the \`${schemaName}\` schema using ManyJson.`
+		keywords = ['json schema', 'schema', schemaName, 'validation', 'ManyJson']
+	} else if (to.name === 'SchemaFile' && schemaName && fileName) {
+		title = `Schema - ${schemaName} - ${fileName} | ManyJson`
+		description = `Edit and validate \`${fileName}\` with the \`${schemaName}\` schema in ManyJson.`
+		keywords = ['json', 'json schema', schemaName, fileName, 'editor', 'validation', 'ManyJson']
+	} else if (to.name === 'Home') {
+		title = 'Home | ManyJson'
+		description = 'ManyJson – JSON Schema and JSON file manager for productive workflows.'
+		keywords = ['ManyJson', 'json', 'json schema', 'schema manager', 'editor']
+	} else {
+		const routeName = to.name?.toString() || 'Page'
+		title = `${routeName} | ManyJson`
+	}
+
+	const canonical = window.location.href
+	applySeoMeta({
+		title,
+		description,
+		keywords,
+		canonical
+	})
 })
 

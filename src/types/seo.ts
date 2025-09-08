@@ -2,6 +2,12 @@ export interface SeoMeta {
 	title?: string
 	description?: string
 	noIndex?: boolean
+	/** Canonical URL for the current page */
+	canonical?: string
+	/** Alternate language/region URLs */
+	alternates?: Array<{ hrefLang: string; href: string }>
+	/** Comma-joined when rendered */
+	keywords?: string[]
 	openGraph?: {
 		title?: string
 		description?: string

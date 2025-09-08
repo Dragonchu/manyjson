@@ -26,13 +26,22 @@ uiStore.initializeTheme()
 uiStore.initializeLayout()
 uiStore.initializeKeyboardShortcuts()
 
-// Basic per-route SEO
+// Basic per-route SEO (desktop title consistency)
 router.afterEach((to) => {
-  const routeName = to.name?.toString() || 'Home'
-  const paramsTitle = Object.values(to.params).flat().join(' / ')
-  const titleSuffix = paramsTitle ? ` - ${paramsTitle}` : ''
+  const schemaName = (to.params as any).schemaName as string | undefined
+  const fileName = (to.params as any).fileName as string | undefined
+
+  let title = 'Home | ManyJson'
+  if (to.name === 'Schema' && schemaName) {
+    title = `Schema - ${schemaName} | ManyJson`
+  } else if (to.name === 'SchemaFile' && schemaName && fileName) {
+    title = `Schema - ${schemaName} - ${fileName} | ManyJson`
+  } else if (to.name && to.name !== 'Home') {
+    title = `${to.name.toString()} | ManyJson`
+  }
+
   applySeoMeta({
-    title: `${routeName}${titleSuffix} | ManyJson`,
+    title,
     description: 'ManyJson – JSON Schema and JSON file manager for productive workflows.'
   })
 })
