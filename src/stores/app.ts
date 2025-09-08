@@ -67,7 +67,17 @@ export const useAppStore = defineStore('app', () => {
     schemas.value.push(newSchema)
   }
 
-  async function addSchema(name: string, content: any): Promise<boolean> {
+  function persistSchemasWeb() {
+    try {
+      const simple = schemas.value.map((s: SchemaInfo) => ({ name: s.name, path: s.path, content: s.content }))
+      localStorage.setItem('schemas', JSON.stringify(simple))
+      logInfo('Schemas persisted to localStorage (web)')
+    } catch (e) {
+      logError('Failed to persist schemas to localStorage', e)
+    }
+  }
+
+  async function addSchema(name: string, content: any, options?: { path?: string }): Promise<boolean> {
     logInfo('addSchema called', { 
       name, 
       hasContent: !!content, 
@@ -79,7 +89,7 @@ export const useAppStore = defineStore('app', () => {
         return false
       }
       const schemaName = name.endsWith('.json') ? name : `${name}.json`
-      if (schemas.value.some(schema => schema.name === schemaName)) {
+      if (schemas.value.some((schema: SchemaInfo) => schema.name === schemaName)) {
         logError('Duplicate schema name', { schemaName })
         return false
       }
@@ -100,8 +110,10 @@ export const useAppStore = defineStore('app', () => {
           return false
         }
       } else {
-        // Fallback for web mode - add to memory only
-        addSchemaLocal({ name: schemaName, path: `mock:///${schemaName}`, content })
+        // Web mode: use provided fs path if any, otherwise a mock path until first save
+        const path = options?.path ?? `mock:///${schemaName}`
+        addSchemaLocal({ name: schemaName, path, content })
+        persistSchemasWeb()
         return true
       }
     } catch (error) {
@@ -118,7 +130,7 @@ export const useAppStore = defineStore('app', () => {
           const result = await window.electronAPI.listConfigFiles()
           if (result.success && result.files) {
             const loadedSchemas: SchemaInfo[] = []
-            for (const file of result.files) {
+            for (const file of result.files as Array<{ name: string; path: string; content: any }>) {
               const schemaInfo: SchemaInfo = {
                 name: file.name,
                 path: file.path,
@@ -138,43 +150,27 @@ export const useAppStore = defineStore('app', () => {
         }
       }
 
-      // Fallback: Mock data for development/web mode
-      const mockSchemas: SchemaInfo[] = [
-        {
-          name: 'user-schema.json',
-          path: '/workspace/user-schema.json',
-          content: {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "type": "object",
-            "properties": {
-              "id": { "type": "number" },
-              "name": { "type": "string", "minLength": 1 },
-              "email": { "type": "string", "format": "email" },
-              "age": { "type": "number", "minimum": 0 }
-            },
-            "required": ["id", "name", "email"]
-          },
-          associatedFiles: []
-        },
-        {
-          name: 'product-schema.json',
-          path: '/workspace/product-schema.json',
-          content: {
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "type": "object",
-            "properties": {
-              "id": { "type": "number" },
-              "title": { "type": "string", "minLength": 1 },
-              "price": { "type": "number", "minimum": 0 },
-              "category": { "type": "string" }
-            },
-            "required": ["id", "title", "price"]
-          },
-          associatedFiles: []
+      // Web mode: load from localStorage (if any)
+      try {
+        const stored = localStorage.getItem('schemas')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) {
+            schemas.value = parsed.map((s: any) => ({
+              name: s.name,
+              path: s.path,
+              content: s.content,
+              associatedFiles: []
+            }))
+            await loadSchemaAssociations()
+            return
+          }
         }
-      ]
-      schemas.value = mockSchemas
-      await loadJsonFiles()
+      } catch (e) {
+        logError('Failed to load schemas from localStorage', e)
+      }
+      // No stored schemas; start empty
+      schemas.value = []
       await loadSchemaAssociations()
     } catch (error) {
       logError('Unexpected error in loadSchemas', error)
@@ -225,7 +221,7 @@ export const useAppStore = defineStore('app', () => {
 
       // Associate files with schemas (validation handled elsewhere in UI for now)
       for (const file of mockJsonFiles) {
-        const associatedSchema = schemas.value.find(schema => {
+        const associatedSchema = schemas.value.find((schema: SchemaInfo) => {
           return file.name.includes('user') ? schema.name.includes('user') : schema.name.includes('product')
         })
         if (associatedSchema) {
@@ -347,7 +343,7 @@ export const useAppStore = defineStore('app', () => {
       if (window.electronAPI?.deleteFile) {
         const result = await window.electronAPI.deleteFile(schema.path)
         if (result.success) {
-          const schemaIndex = schemas.value.findIndex(s => s.path === schema.path)
+          const schemaIndex = schemas.value.findIndex((s: SchemaInfo) => s.path === schema.path)
           if (schemaIndex !== -1) {
             schemas.value.splice(schemaIndex, 1)
           }
@@ -360,7 +356,7 @@ export const useAppStore = defineStore('app', () => {
           return false
         }
       } else {
-        const schemaIndex = schemas.value.findIndex(s => s.path === schema.path)
+        const schemaIndex = schemas.value.findIndex((s: SchemaInfo) => s.path === schema.path)
         if (schemaIndex !== -1) {
           schemas.value.splice(schemaIndex, 1)
         }
@@ -368,6 +364,7 @@ export const useAppStore = defineStore('app', () => {
           currentSchema.value = null
           currentJsonFile.value = null
         }
+        persistSchemasWeb()
         return true
       }
     } catch (error) {
@@ -382,12 +379,12 @@ export const useAppStore = defineStore('app', () => {
       if (window.electronAPI?.deleteFile) {
         const result = await window.electronAPI.deleteFile(file.path)
         if (result.success) {
-          const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+          const fileIndex = jsonFiles.value.findIndex((f: JsonFile) => f.path === file.path)
           if (fileIndex !== -1) {
             jsonFiles.value.splice(fileIndex, 1)
           }
           for (const schema of schemas.value) {
-            const associatedFileIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+            const associatedFileIndex = schema.associatedFiles.findIndex((f: JsonFile) => f.path === file.path)
             if (associatedFileIndex !== -1) {
               schema.associatedFiles.splice(associatedFileIndex, 1)
               break
@@ -401,12 +398,12 @@ export const useAppStore = defineStore('app', () => {
           return false
         }
       } else {
-        const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+        const fileIndex = jsonFiles.value.findIndex((f: JsonFile) => f.path === file.path)
         if (fileIndex !== -1) {
           jsonFiles.value.splice(fileIndex, 1)
         }
         for (const schema of schemas.value) {
-          const associatedFileIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+          const associatedFileIndex = schema.associatedFiles.findIndex((f: JsonFile) => f.path === file.path)
           if (associatedFileIndex !== -1) {
             schema.associatedFiles.splice(associatedFileIndex, 1)
             break
@@ -430,14 +427,14 @@ export const useAppStore = defineStore('app', () => {
       const newName = newPath.split('/').pop() || newPath
 
       // Update global list
-      const fileIndex = jsonFiles.value.findIndex(f => f.path === file.path)
+      const fileIndex = jsonFiles.value.findIndex((f: JsonFile) => f.path === file.path)
       if (fileIndex !== -1) {
         jsonFiles.value[fileIndex] = { ...jsonFiles.value[fileIndex], name: newName, path: newPath }
       }
 
       // Update schema association
       for (const schema of schemas.value) {
-        const associatedFileIndex = schema.associatedFiles.findIndex(f => f.path === file.path)
+        const associatedFileIndex = schema.associatedFiles.findIndex((f: JsonFile) => f.path === file.path)
         if (associatedFileIndex !== -1) {
           schema.associatedFiles[associatedFileIndex] = { ...schema.associatedFiles[associatedFileIndex], name: newName, path: newPath }
           break
@@ -494,7 +491,7 @@ export const useAppStore = defineStore('app', () => {
           
           // Add to current schema's associated files if applicable
           if (currentSchema.value) {
-            const schemaIndex = schemas.value.findIndex(s => s.path === currentSchema.value!.path)
+            const schemaIndex = schemas.value.findIndex((s: SchemaInfo) => s.path === currentSchema.value!.path)
             if (schemaIndex !== -1) {
               schemas.value[schemaIndex].associatedFiles.push(newFile)
             }
@@ -523,7 +520,7 @@ export const useAppStore = defineStore('app', () => {
         jsonFiles.value.push(newFile)
         
         if (currentSchema.value) {
-          const schemaIndex = schemas.value.findIndex(s => s.path === currentSchema.value!.path)
+          const schemaIndex = schemas.value.findIndex((s: SchemaInfo) => s.path === currentSchema.value!.path)
           if (schemaIndex !== -1) {
             schemas.value[schemaIndex].associatedFiles.push(newFile)
           }
@@ -541,10 +538,10 @@ export const useAppStore = defineStore('app', () => {
   async function saveSchemaAssociations(): Promise<void> {
     try {
       if (window.electronAPI && typeof window.electronAPI.writeConfigFile === 'function') {
-        const associations = schemas.value.map(schema => ({
+        const associations = schemas.value.map((schema: SchemaInfo) => ({
           schemaPath: schema.path,
           schemaName: schema.name,
-          associatedFiles: schema.associatedFiles.map(file => ({
+          associatedFiles: schema.associatedFiles.map((file: JsonFile) => ({
             name: file.name,
             path: file.path,
             isValid: file.isValid,
@@ -554,10 +551,10 @@ export const useAppStore = defineStore('app', () => {
         await window.electronAPI.writeConfigFile('schema-associations.json', JSON.stringify(associations, null, 2))
         logInfo('Schema associations saved to config file')
       } else {
-        const associations = schemas.value.map(schema => ({
+        const associations = schemas.value.map((schema: SchemaInfo) => ({
           schemaPath: schema.path,
           schemaName: schema.name,
-          associatedFiles: schema.associatedFiles.map(file => ({
+          associatedFiles: schema.associatedFiles.map((file: JsonFile) => ({
             name: file.name,
             path: file.path,
             content: file.content,
@@ -581,7 +578,7 @@ export const useAppStore = defineStore('app', () => {
         try {
           const result = await window.electronAPI.listConfigFiles()
           if (result.success && result.files) {
-            const associationsFile = result.files.find(file => file.name === 'schema-associations.json')
+            const associationsFile = result.files.find((file: { name: string }) => file.name === 'schema-associations.json')
             if (associationsFile && associationsFile.content) {
               associations = Array.isArray(associationsFile.content) ? associationsFile.content : []
               logInfo('Schema associations loaded from config file', { count: associations.length })
@@ -603,7 +600,7 @@ export const useAppStore = defineStore('app', () => {
       }
 
       for (const association of associations) {
-        const schema = schemas.value.find(s => s.path === association.schemaPath || s.name === association.schemaName)
+        const schema = schemas.value.find((s: SchemaInfo) => s.path === association.schemaPath || s.name === association.schemaName)
         if (schema) {
           for (const fileInfo of association.associatedFiles) {
             try {
@@ -630,7 +627,7 @@ export const useAppStore = defineStore('app', () => {
                   errors: fileInfo.errors
                 }
                 schema.associatedFiles.push(jsonFile)
-                const existingFileIndex = jsonFiles.value.findIndex(f => f.path === fileInfo.path)
+                const existingFileIndex = jsonFiles.value.findIndex((f: JsonFile) => f.path === fileInfo.path)
                 if (existingFileIndex === -1) {
                   jsonFiles.value.push(jsonFile)
                 } else {
@@ -669,6 +666,7 @@ export const useAppStore = defineStore('app', () => {
     setCurrentJsonFile,
     addSchemaLocal,
     addSchema,
+    persistSchemasWeb,
     loadSchemas,
     loadSchemaAssociations,
     loadJsonFiles,

@@ -217,6 +217,10 @@ async function saveChanges() {
       appStore.currentJsonFile.content = parsedContent
       appStore.currentJsonFile.isValid = true
       appStore.currentJsonFile.errors = []
+      if (result.filePath && result.filePath !== appStore.currentJsonFile.path) {
+        // Update path if web save returned a new fs:// path
+        appStore.currentJsonFile.path = result.filePath
+      }
       ui.setEditMode(false)
     } else {
       ui.showStatus(`Failed to save file: ${result.error || 'Unknown error'}`, 'error')
@@ -268,6 +272,11 @@ async function saveSchemaChanges() {
     if (result.success) {
       // Update the current schema content
       appStore.currentSchema.content = parsedContent
+      if (result.filePath && result.filePath !== appStore.currentSchema.path) {
+        appStore.currentSchema.path = result.filePath
+        // Persist updated schema path in web mode
+        try { (appStore as any).persistSchemasWeb?.() } catch {}
+      }
       ui.setSchemaEditMode(false)
       
       // Reload schemas to refresh the UI

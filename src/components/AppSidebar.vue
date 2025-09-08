@@ -12,6 +12,7 @@
         <ThemeToggle />
         <div class="schema-actions">
           <button class="apple-btn tinted small" @click="handleAddSchema">Add</button>
+          <button class="apple-btn bordered small" @click="handleImportSchema">Import</button>
           <button class="apple-btn bordered small" @click="handleRefresh">Refresh</button>
         </div>
       </div>
@@ -51,11 +52,13 @@ import { useAppStore, type SchemaInfo } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import AddSchemaDialog from './AddSchemaDialog.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import { getPlatformRuntime } from '@/platform/runtime'
 
 const appStore = useAppStore()
 const ui = useUIStore()
 const addSchemaDialog = ref<InstanceType<typeof AddSchemaDialog>>()
 const router = useRouter()
+const runtime = getPlatformRuntime()
 
 const leftPanelStyle = computed(() => {
   if (ui.leftSidebarCollapsed) {
@@ -75,6 +78,67 @@ function handleAddSchema() {
 
 function handleRefresh() {
   appStore.loadSchemas()
+}
+
+async function handleImportSchema() {
+  try {
+    if (runtime.name === 'web') {
+      // Use File System Access API if available via platform wrapper
+      const result = await runtime.apis.showOpenDialog({
+        title: 'Import schema JSON',
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+        properties: []
+      })
+      if (result.canceled || result.filePaths.length === 0) return
+      // Read first selection
+      const filePath = result.filePaths[0]
+      const read = await runtime.apis.readTextFile(filePath)
+      if (!read.success || !read.content) {
+        ui.showStatus('Failed to read selected file', 'error')
+        return
+      }
+      // Parse and add schema
+      let json: any
+      try {
+        json = JSON.parse(read.content)
+      } catch (e) {
+        ui.showStatus('Selected file is not valid JSON', 'error')
+        return
+      }
+      const name = (filePath.split('/').pop() || 'schema.json')
+      const ok = await appStore.addSchema(name, json, { path: filePath })
+      if (ok) {
+        ui.showStatus(`Imported schema: ${name}`, 'success')
+      } else {
+        ui.showStatus('Failed to import schema', 'error')
+      }
+    } else {
+      // Desktop: use native open dialog exposed already via electronAPI
+      const result = await runtime.apis.showOpenDialog({
+        title: 'Import schema JSON',
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+        properties: ['openFile']
+      })
+      if (result.canceled || result.filePaths.length === 0) return
+      const filePath = result.filePaths[0]
+      const read = await runtime.apis.readTextFile(filePath)
+      if (!read.success || !read.content) {
+        ui.showStatus('Failed to read selected file', 'error')
+        return
+      }
+      let json: any
+      try { json = JSON.parse(read.content) } catch {
+        ui.showStatus('Selected file is not valid JSON', 'error')
+        return
+      }
+      const name = (filePath.split('/').pop() || 'schema.json')
+      const ok = await appStore.addSchema(name, json, { path: filePath })
+      if (ok) ui.showStatus(`Imported schema: ${name}`, 'success')
+      else ui.showStatus('Failed to import schema', 'error')
+    }
+  } catch (e) {
+    ui.showStatus('Import canceled or failed', 'error')
+  }
 }
 
 function showContextMenu(event: MouseEvent, schema: SchemaInfo) {
