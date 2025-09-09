@@ -141,7 +141,45 @@ export const WebPlatformApis: PlatformApis = {
 	},
 
 	async deleteFile(): Promise<WriteResult> { return { success: true } },
-	async renameFile(_old, _new): Promise<WriteResult> { return { success: true } },
+	async renameFile(oldPath: string, newPath: string): Promise<WriteResult> {
+		// Web mode cannot truly rename files on disk with a bare file handle.
+		// Implement virtual rename for supported schemes.
+		try {
+			// Case 1: fs://<id>/<name> — must keep same id
+			const oldFs = parseFsUri(oldPath)
+			const newFs = parseFsUri(newPath)
+			if (oldFs || newFs) {
+				if (!oldFs || !newFs) return { success: false, error: 'Unsupported path in web mode' }
+				if (oldFs.id !== newFs.id) return { success: false, error: 'Renaming must stay within the original folder' }
+				if (!handleRegistry.has(oldFs.id)) return { success: false, error: 'File handle not found (permission not granted or expired)' }
+				return { success: true, filePath: newPath }
+			}
+
+			// Case 2: structured://<schemaName>/<fileName>
+			if (oldPath.startsWith('structured://') && newPath.startsWith('structured://')) {
+				const getDir = (p: string) => p.slice(0, p.lastIndexOf('/'))
+				if (getDir(oldPath) !== getDir(newPath)) {
+					return { success: false, error: 'Renaming must stay within the original folder' }
+				}
+				return { success: true, filePath: newPath }
+			}
+
+			// Case 3: mock:// or other virtual schemes — allow rename within same directory part
+			const schemeMatchOld = oldPath.match(/^([a-z]+):\/\//)
+			const schemeMatchNew = newPath.match(/^([a-z]+):\/\//)
+			if (schemeMatchOld && schemeMatchNew && schemeMatchOld[1] === schemeMatchNew[1]) {
+				const getDir = (p: string) => p.slice(0, p.lastIndexOf('/'))
+				if (getDir(oldPath) !== getDir(newPath)) {
+					return { success: false, error: 'Renaming must stay within the original folder' }
+				}
+				return { success: true, filePath: newPath }
+			}
+
+			return { success: false, error: 'Unsupported path in web mode' }
+		} catch (e: any) {
+			return { success: false, error: String(e) }
+		}
+	},
 	async copyFile(_src, _dst): Promise<WriteResult> { return { success: true } },
 	async getFileStats() { return { success: false, error: 'getFileStats not available in web mode' } },
 	async listDirectory(_dir): Promise<{ success: boolean; entries?: ListDirectoryEntry[]; error?: string }> { return { success: false, error: 'listDirectory not available in web mode' } },
