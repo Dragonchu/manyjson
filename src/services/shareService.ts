@@ -64,7 +64,7 @@ export function buildShareLink(compressed: string): string {
     }
     // Hash history: keep router at root path and put token in hash query
     const base = `${location.origin}${location.pathname}${location.search || ''}`
-    return `${base}#/ ?${buildShareLinkToken(compressed)}`.replace(' /?', '/?')
+    return `${base}#/?${buildShareLinkToken(compressed)}`
   } catch {
     return `#/?${buildShareLinkToken(compressed)}`
   }
@@ -77,7 +77,7 @@ export function extractShareTokenFromUrl(url: string): string | null {
     const qp = u.searchParams.get('share')
     if (qp) return qp
     // 2) Hash part variants: '#share=...' or '#/?share=...' or '#/path?share=...'
-    const rawHash = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash
+    const rawHash = (u.hash.startsWith('#') ? u.hash.slice(1) : u.hash).replace(/\s+/g, '')
     if (!rawHash) return null
     if (rawHash.startsWith('share=')) {
       return rawHash.slice('share='.length)
@@ -94,7 +94,7 @@ export function extractShareTokenFromUrl(url: string): string | null {
     // Fallback: parse as plain hash string
     const idx = url.indexOf('#')
     if (idx >= 0) {
-      const hash = url.slice(idx + 1)
+      const hash = url.slice(idx + 1).replace(/\s+/g, '')
       if (hash.startsWith('share=')) return hash.slice('share='.length)
       const qIdx = hash.indexOf('?')
       if (qIdx >= 0) {
