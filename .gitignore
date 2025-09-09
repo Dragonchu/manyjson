@@ -68,6 +68,11 @@ node_modules/
 dist/
 out/
 release/
+.vite/
+.cache/
+.temp/
+.eslintcache
+.DS_Store
 .nyc_output/
 coverage/
 *.tgz

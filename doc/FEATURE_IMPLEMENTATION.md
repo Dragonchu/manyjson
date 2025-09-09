@@ -205,3 +205,35 @@ Web 平台 `src/platform/web.ts` 中 `renameFile` 为占位实现，仅返回 `{
 
 ### 限制说明
 浏览器端并未真正修改磁盘上的文件名；该实现仅在应用内部“重命名”引用的虚拟路径标签，符合 Web 模式的能力边界。
+
+## 任务总纲（LC-91 修改 Web 模式保存逻辑）
+
+### 需求
+Web 模式在编辑状态下点击“Save Changes”按钮时，应仅更新内存与应用状态，不触发浏览器文件写入或下载，即“不持久化到磁盘”。
+
+### 设计与实现
+- 入口：`src/components/RightPanel.vue` 中的 `saveChanges()`。
+- 平台判定：通过 `useCapability()` 获取 `runtime.name`，在 Web 分支直接更新当前文件内容，而不调用文件写入 API。
+- 行为变更：
+  - Web：解析并校验 JSON 后，更新 `appStore.currentJsonFile.content / isValid / errors`，调用 `appStore.saveSchemaAssociations()`（若存在）以同步内存态到 `localStorage` 的关联关系，然后退出编辑模式并提示“已保存到内存（Web 模式不写入磁盘）”。
+  - Desktop/Electron：维持原行为，通过 `fileService.writeJsonFile()` 持久化到磁盘。
+
+### 关键代码位置
+- `src/components/RightPanel.vue`
+  - 在 `saveChanges()` 中新增：
+    - `if (runtime.name === 'web') { /* 仅内存更新，不写盘 */ }` 分支。
+    - 使用 `ui.showStatus` 给出 Web 模式提示文案。
+- 相关支撑：
+  - `src/composables/useCapability.ts` 提供 `runtime` 判定。
+  - `src/stores/app.ts` 的 `saveSchemaAssociations()` 用于 Web 下将关联信息保存在 `localStorage`（若已实现则复用）。
+
+### 兼容性与影响
+- Electron 桌面端行为不变。
+- Web 端不再弹出保存对话框或触发下载，用户的修改会保留在应用内存与本地存储映射（关联关系）中，符合“非持久化到磁盘”的要求。
+
+### 测试要点
+- Web 模式：
+  - 编辑 JSON，点击“Save Changes”后应退出编辑态，右侧内容更新，且无文件下载弹窗。
+  - 刷新页面后（如未实现内容级持久化），关联列表仍可从 `localStorage` 还原，但编辑内容若未设计为存储则仅会保留于内存生命周期内（符合当前需求“非磁盘持久化”）。
+- 桌面端：
+  - 行为与原先一致，仍写入磁盘。

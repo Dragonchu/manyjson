@@ -152,7 +152,7 @@ const appStore = useAppStore()
 const ui = useUIStore()
 const validationService = new ValidationService()
 const fileService = new FileService()
-const { copyText } = useCapability()
+const { copyText, runtime } = useCapability()
 const editContent = ref('')
 const editErrors = ref<any[]>([])
 const editSchemaContent = ref('')
@@ -208,7 +208,18 @@ async function saveChanges() {
       }
     }
 
-    // Save the file
+    // In web mode, save to memory/local state without persisting to disk
+    if (runtime.name === 'web') {
+      appStore.currentJsonFile.content = parsedContent
+      appStore.currentJsonFile.isValid = true
+      appStore.currentJsonFile.errors = []
+      try { (appStore as any).saveSchemaAssociations?.() } catch {}
+      ui.setEditMode(false)
+      ui.showStatus('已保存到内存（Web 模式不写入磁盘）', 'success')
+      return
+    }
+
+    // Desktop/Electron: persist to disk via file service
     const result = await fileService.writeJsonFile(appStore.currentJsonFile.path, editContent.value)
     const success = result.success
     
