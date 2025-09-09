@@ -115,43 +115,7 @@ onMounted(async () => {
     const fullUrl = location.href
     const token = extractShareTokenFromUrl(fullUrl)
     if (token) {
-      // Ask user to import
-      const confirmed = confirm('检测到分享链接，是否导入相关的 schema 和 JSON 文件？')
-      if (confirmed) {
-        const payload = await decompressToken(token)
-        if (payload) {
-          // Import schema
-          const ok = await appStore.addSchema(payload.schema.name, payload.schema.content)
-          if (ok) {
-            const schema = appStore.schemas.find(s => s.name === (payload.schema.name.endsWith('.json') ? payload.schema.name : payload.schema.name + '.json'))
-            if (schema) {
-              // Add files
-              for (const f of payload.files) {
-                const exists = schema.associatedFiles.some(x => x.name === f.name)
-                const fileObj = {
-                  name: f.name,
-                  path: `import://${schema.name}/${f.name}`,
-                  content: f.content,
-                  isValid: true,
-                  errors: [] as any[]
-                }
-                if (!exists) {
-                  schema.associatedFiles.push(fileObj)
-                }
-                const idx = appStore.jsonFiles.findIndex(x => x.path === fileObj.path)
-                if (idx === -1) appStore.jsonFiles.push(fileObj)
-                else appStore.jsonFiles[idx] = fileObj
-              }
-              await appStore.saveSchemaAssociations()
-              ui.showStatus('导入成功', 'success')
-            }
-          } else {
-            ui.showStatus('导入 schema 失败', 'error')
-          }
-        } else {
-          ui.showStatus('分享链接无效或损坏', 'error')
-        }
-      }
+      await tryImportFromTokenWithConfirm(token)
     }
   } catch {}
 
@@ -203,9 +167,31 @@ onMounted(async () => {
   }
   document.addEventListener('paste', handlePaste as EventListener)
   
+  // Address bar: listen to hashchange and popstate
+  const handleHashChange = async () => {
+    try {
+      const token = extractShareTokenFromUrl(location.href)
+      if (token) {
+        await tryImportFromTokenWithConfirm(token)
+      }
+    } catch {}
+  }
+  const handlePopState = async () => {
+    try {
+      const token = extractShareTokenFromUrl(location.href)
+      if (token) {
+        await tryImportFromTokenWithConfirm(token)
+      }
+    } catch {}
+  }
+  window.addEventListener('hashchange', handleHashChange)
+  window.addEventListener('popstate', handlePopState)
+  
   // Remove on unmount
   onUnmounted(() => {
     document.removeEventListener('paste', handlePaste as EventListener)
+    window.removeEventListener('hashchange', handleHashChange)
+    window.removeEventListener('popstate', handlePopState)
   })
 })
 
@@ -250,6 +236,72 @@ function syncFromRoute() {
       router.replace({ name: 'Home' })
     }
   }
+}
+
+// Helpers for share import and URL cleanup
+async function tryImportFromTokenWithConfirm(token: string) {
+  // token size guard (rough URL length protection)
+  if (token.length > 6000) {
+    ui.showStatus('The share link is too large. More features coming soon.', 'error')
+    return
+  }
+  const confirmed = confirm('检测到分享链接，是否导入相关的 schema 和 JSON 文件？')
+  if (!confirmed) return
+  const payload = await decompressToken(token)
+  if (!payload) {
+    ui.showStatus('分享链接无效或损坏', 'error')
+    return
+  }
+  const ok = await appStore.addSchema(payload.schema.name, payload.schema.content)
+  if (!ok) {
+    ui.showStatus('导入 schema 失败', 'error')
+    return
+  }
+  const importedSchemaName = payload.schema.name.endsWith('.json') ? payload.schema.name : payload.schema.name + '.json'
+  const schema = appStore.schemas.find(s => s.name === importedSchemaName)
+  if (!schema) return
+  for (const f of payload.files) {
+    const exists = schema.associatedFiles.some(x => x.name === f.name)
+    const fileObj = {
+      name: f.name,
+      path: `import://${schema.name}/${f.name}`,
+      content: f.content,
+      isValid: true,
+      errors: [] as any[]
+    }
+    if (!exists) {
+      schema.associatedFiles.push(fileObj)
+    }
+    const idx = appStore.jsonFiles.findIndex(x => x.path === fileObj.path)
+    if (idx === -1) appStore.jsonFiles.push(fileObj)
+    else appStore.jsonFiles[idx] = fileObj
+  }
+  await appStore.saveSchemaAssociations()
+  ui.showStatus('导入成功', 'success')
+  // Clean share token from URL after successful import
+  cleanShareFromUrl()
+}
+
+function cleanShareFromUrl() {
+  try {
+    const url = new URL(location.href)
+    let changed = false
+    // Remove query param if present
+    if (url.searchParams.has('share')) {
+      url.searchParams.delete('share')
+      changed = true
+    }
+    // Handle hash-only token (e.g., #share=...)
+    const rawHash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
+    if (rawHash && rawHash.startsWith('share=')) {
+      // If app uses hash history, fallback to root '#/' after clearing
+      url.hash = '#/'
+      changed = true
+    }
+    if (changed) {
+      history.replaceState(null, '', url.toString())
+    }
+  } catch {}
 }
 </script>
 
