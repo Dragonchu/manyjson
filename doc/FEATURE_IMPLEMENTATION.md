@@ -206,6 +206,44 @@ Web 平台 `src/platform/web.ts` 中 `renameFile` 为占位实现，仅返回 `{
 ### 限制说明
 浏览器端并未真正修改磁盘上的文件名；该实现仅在应用内部“重命名”引用的虚拟路径标签，符合 Web 模式的能力边界。
 
+## 任务总纲（LC-93 增加分享与查看分享的功能）
+
+### 目标
+- 在 Schema 列表右键菜单新增“Share...”功能，弹窗勾选该 Schema 关联的 JSON 文件。
+- 点击“Generate Link”后，将 Schema 与所选 JSON 文件压缩为短链接（尽可能减小大小），便于复制分享。
+- 在 ManyJson 页面粘贴含分享 token 的链接或通过 URL 访问时，提示用户是否导入，确认后导入 Schema 与 JSON 文件（Web 端优先，客户端暂不实现特有能力）。
+
+### 技术方案
+- 新增 `src/services/shareService.ts`：
+  - `createSharePayload(schema, files)` 生成标准化 payload `{ v:1, app:'manyjson', schema, files }`。
+  - 采用 `lz-string` 的 `compressToEncodedURIComponent`/`decompressFromEncodedURIComponent` 进行压缩/解压；通过 `share=<token>` 形式挂载于 URL hash 或 query。
+  - `buildShareLink(token)` 生成可分享链接。
+- 新增组件 `src/components/ShareSchemaPopup.vue`：
+  - 通过全局事件 `show-share-schema-popup` 打开，展示 Schema 及其关联文件复选列表。
+  - 生成链接并支持复制到剪贴板。
+- 更新 `src/components/ContextMenu.vue`：
+  - 在 Schema 菜单中加入 “Share...” 项，触发上述事件。
+- 更新 `src/views/Home.vue`：
+  - 挂载 `ShareSchemaPopup`；页面加载时检查 URL 中是否存在 `share` token，若存在弹出确认并执行导入：
+    - 调用 `appStore.addSchema` 导入 Schema；
+    - 将 JSON 文件以 `import://schemaName/fileName` 的虚拟路径加入到当前 Schema 的 `associatedFiles`，并调用 `appStore.saveSchemaAssociations()` 持久化（Web 使用 localStorage）。
+
+### 依赖与配置
+- 在 `package.json` 增加依赖：`lz-string`。
+- `.gitignore` 无需改动（生成链接为纯文本，不产生工件）。
+
+### 兼容性
+- 仅实现 Web 端；桌面端行为不变。分享链接的解析在前端完成。
+- 对于移动端视图（仅查看模式），分享弹窗与右键菜单原本即隐藏，不影响。
+
+### 已知限制
+- 链接长度与浏览器地址栏限制相关；`lz-string` 已做最大化压缩，建议文件数量与体积适度。
+- 导入的 JSON 文件在 Web 模式使用虚拟路径（非磁盘），刷新后通过本地存储的关联数据还原。
+
+### 测试要点
+- 右键 Schema → Share... → 勾选文件 → 生成链接 → 复制。
+- 在新窗口打开该链接或在地址栏粘贴后回车，弹出确认，点击确认后应成功导入 Schema 与文件，并在中间面板可见。
+
 ## 任务总纲（LC-91 修改 Web 模式保存逻辑）
 
 ### 需求

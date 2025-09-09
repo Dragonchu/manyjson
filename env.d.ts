@@ -26,3 +26,14 @@ interface Window {
     listSchemaJsonFiles?: (schemaName: string) => Promise<{ success: boolean; files?: Array<{ name: string; path: string; content: any }>; error?: string }>
   }
 }
+
+// Fallback type declarations for lz-string to satisfy TS in bundler mode
+declare module 'lz-string' {
+  export function compressToEncodedURIComponent(input: string): string
+  export function decompressFromEncodedURIComponent(input: string): string | null
+  const _default: {
+    compressToEncodedURIComponent(input: string): string
+    decompressFromEncodedURIComponent(input: string): string | null
+  }
+  export default _default
+}

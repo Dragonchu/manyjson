@@ -29,6 +29,9 @@
     
     <!-- File Selector Popup for Diff (disabled on mobile view-only) -->
     <FileSelectorPopup v-if="!ui.isMobile" />
+
+    <!-- Share Schema Popup -->
+    <ShareSchemaPopup v-if="!ui.isMobile" />
   </div>
   <div v-else class="app-container">
     <MobileFriendly />
@@ -47,6 +50,8 @@ import FileSelectorPopup from '@/components/FileSelectorPopup.vue'
 import { useAppStore } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import MobileFriendly from '@/components/MobileFriendly.vue'
+import ShareSchemaPopup from '@/components/ShareSchemaPopup.vue'
+import { extractShareTokenFromUrl, decompressToken } from '@/services/shareService'
 
 const appStore = useAppStore()
 const ui = useUIStore()
@@ -104,6 +109,90 @@ onMounted(async () => {
   
   // Add event listener for diff functionality
   document.addEventListener('start-diff-view', handleStartDiff as EventListener)
+
+  // Detect share link in URL on load
+  try {
+    const fullUrl = location.href
+    const token = extractShareTokenFromUrl(fullUrl)
+    if (token) {
+      await tryImportFromTokenWithConfirm(token)
+    }
+  } catch {}
+
+  // Paste handler: detect share link token from clipboard text
+  const handlePaste = async (e: ClipboardEvent) => {
+    try {
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as any).isContentEditable)) {
+        return
+      }
+      const text = e.clipboardData?.getData('text') || ''
+      if (!text) return
+      const token = extractShareTokenFromUrl(text)
+      if (!token) return
+      const confirmed = confirm('检测到分享链接，是否导入相关的 schema 和 JSON 文件？')
+      if (!confirmed) return
+      const payload = await decompressToken(token)
+      if (!payload) {
+        ui.showStatus('分享链接无效或损坏', 'error')
+        return
+      }
+      const ok = await appStore.addSchema(payload.schema.name, payload.schema.content)
+      if (!ok) {
+        ui.showStatus('导入 schema 失败', 'error')
+        return
+      }
+      const importedSchemaName = payload.schema.name.endsWith('.json') ? payload.schema.name : payload.schema.name + '.json'
+      const schema = appStore.schemas.find(s => s.name === importedSchemaName)
+      if (!schema) return
+      for (const f of payload.files) {
+        const exists = schema.associatedFiles.some(x => x.name === f.name)
+        const fileObj = {
+          name: f.name,
+          path: `import://${schema.name}/${f.name}`,
+          content: f.content,
+          isValid: true,
+          errors: [] as any[]
+        }
+        if (!exists) {
+          schema.associatedFiles.push(fileObj)
+        }
+        const idx = appStore.jsonFiles.findIndex(x => x.path === fileObj.path)
+        if (idx === -1) appStore.jsonFiles.push(fileObj)
+        else appStore.jsonFiles[idx] = fileObj
+      }
+      await appStore.saveSchemaAssociations()
+      ui.showStatus('导入成功', 'success')
+    } catch {}
+  }
+  document.addEventListener('paste', handlePaste as EventListener)
+  
+  // Address bar: listen to hashchange and popstate
+  const handleHashChange = async () => {
+    try {
+      const token = extractShareTokenFromUrl(location.href)
+      if (token) {
+        await tryImportFromTokenWithConfirm(token)
+      }
+    } catch {}
+  }
+  const handlePopState = async () => {
+    try {
+      const token = extractShareTokenFromUrl(location.href)
+      if (token) {
+        await tryImportFromTokenWithConfirm(token)
+      }
+    } catch {}
+  }
+  window.addEventListener('hashchange', handleHashChange)
+  window.addEventListener('popstate', handlePopState)
+  
+  // Remove on unmount
+  onUnmounted(() => {
+    document.removeEventListener('paste', handlePaste as EventListener)
+    window.removeEventListener('hashchange', handleHashChange)
+    window.removeEventListener('popstate', handlePopState)
+  })
 })
 
 onUnmounted(() => {
@@ -147,6 +236,83 @@ function syncFromRoute() {
       router.replace({ name: 'Home' })
     }
   }
+}
+
+// Helpers for share import and URL cleanup
+async function tryImportFromTokenWithConfirm(token: string) {
+  // token size guard (rough URL length protection)
+  if (token.length > 6000) {
+    ui.showStatus('The share link is too large. More features coming soon.', 'error')
+    return
+  }
+  const confirmed = confirm('检测到分享链接，是否导入相关的 schema 和 JSON 文件？')
+  if (!confirmed) return
+  const payload = await decompressToken(token)
+  if (!payload) {
+    ui.showStatus('分享链接无效或损坏', 'error')
+    return
+  }
+  const ok = await appStore.addSchema(payload.schema.name, payload.schema.content)
+  if (!ok) {
+    ui.showStatus('导入 schema 失败', 'error')
+    return
+  }
+  const importedSchemaName = payload.schema.name.endsWith('.json') ? payload.schema.name : payload.schema.name + '.json'
+  const schema = appStore.schemas.find(s => s.name === importedSchemaName)
+  if (!schema) return
+  for (const f of payload.files) {
+    const exists = schema.associatedFiles.some(x => x.name === f.name)
+    const fileObj = {
+      name: f.name,
+      path: `import://${schema.name}/${f.name}`,
+      content: f.content,
+      isValid: true,
+      errors: [] as any[]
+    }
+    if (!exists) {
+      schema.associatedFiles.push(fileObj)
+    }
+    const idx = appStore.jsonFiles.findIndex(x => x.path === fileObj.path)
+    if (idx === -1) appStore.jsonFiles.push(fileObj)
+    else appStore.jsonFiles[idx] = fileObj
+  }
+  await appStore.saveSchemaAssociations()
+  ui.showStatus('导入成功', 'success')
+  // Clean share token from URL after successful import
+  cleanShareFromUrl()
+}
+
+function cleanShareFromUrl() {
+  try {
+    const url = new URL(location.href)
+    let newUrl = url.toString()
+    // Remove query param if present
+    if (url.searchParams.has('share')) {
+      url.searchParams.delete('share')
+      newUrl = url.toString()
+    }
+    // For hash modes like '#/?share=...' or '#/path?share=...'
+    const rawHash = url.hash
+    if (rawHash) {
+      const hash = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash
+      const qIndex = hash.indexOf('?')
+      if (qIndex >= 0) {
+        const path = hash.slice(0, qIndex) || '/'
+        const qs = new URLSearchParams(hash.slice(qIndex + 1))
+        if (qs.has('share')) {
+          qs.delete('share')
+          const cleanedHash = qs.toString() ? `#${path}?${qs.toString()}` : `#${path}`
+          newUrl = `${url.origin}${url.pathname}${url.search}${cleanedHash}`
+        }
+      } else if (hash.startsWith('share=')) {
+        // Fallback to root path when the entire hash is just the token
+        newUrl = `${url.origin}${url.pathname}${url.search}#/`
+      }
+    }
+    if (newUrl !== location.href) {
+      history.replaceState(null, '', newUrl)
+    }
+  } catch {}
 }
 </script>
 
