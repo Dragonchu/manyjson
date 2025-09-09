@@ -29,6 +29,9 @@
     
     <!-- File Selector Popup for Diff (disabled on mobile view-only) -->
     <FileSelectorPopup v-if="!ui.isMobile" />
+
+    <!-- Share Schema Popup -->
+    <ShareSchemaPopup v-if="!ui.isMobile" />
   </div>
   <div v-else class="app-container">
     <MobileFriendly />
@@ -47,6 +50,8 @@ import FileSelectorPopup from '@/components/FileSelectorPopup.vue'
 import { useAppStore } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import MobileFriendly from '@/components/MobileFriendly.vue'
+import ShareSchemaPopup from '@/components/ShareSchemaPopup.vue'
+import { extractShareTokenFromUrl, decompressToken } from '@/services/shareService'
 
 const appStore = useAppStore()
 const ui = useUIStore()
@@ -104,6 +109,104 @@ onMounted(async () => {
   
   // Add event listener for diff functionality
   document.addEventListener('start-diff-view', handleStartDiff as EventListener)
+
+  // Detect share link in URL on load
+  try {
+    const fullUrl = location.href
+    const token = extractShareTokenFromUrl(fullUrl)
+    if (token) {
+      // Ask user to import
+      const confirmed = confirm('检测到分享链接，是否导入相关的 schema 和 JSON 文件？')
+      if (confirmed) {
+        const payload = await decompressToken(token)
+        if (payload) {
+          // Import schema
+          const ok = await appStore.addSchema(payload.schema.name, payload.schema.content)
+          if (ok) {
+            const schema = appStore.schemas.find(s => s.name === (payload.schema.name.endsWith('.json') ? payload.schema.name : payload.schema.name + '.json'))
+            if (schema) {
+              // Add files
+              for (const f of payload.files) {
+                const exists = schema.associatedFiles.some(x => x.name === f.name)
+                const fileObj = {
+                  name: f.name,
+                  path: `import://${schema.name}/${f.name}`,
+                  content: f.content,
+                  isValid: true,
+                  errors: [] as any[]
+                }
+                if (!exists) {
+                  schema.associatedFiles.push(fileObj)
+                }
+                const idx = appStore.jsonFiles.findIndex(x => x.path === fileObj.path)
+                if (idx === -1) appStore.jsonFiles.push(fileObj)
+                else appStore.jsonFiles[idx] = fileObj
+              }
+              await appStore.saveSchemaAssociations()
+              ui.showStatus('导入成功', 'success')
+            }
+          } else {
+            ui.showStatus('导入 schema 失败', 'error')
+          }
+        } else {
+          ui.showStatus('分享链接无效或损坏', 'error')
+        }
+      }
+    }
+  } catch {}
+
+  // Paste handler: detect share link token from clipboard text
+  const handlePaste = async (e: ClipboardEvent) => {
+    try {
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as any).isContentEditable)) {
+        return
+      }
+      const text = e.clipboardData?.getData('text') || ''
+      if (!text) return
+      const token = extractShareTokenFromUrl(text)
+      if (!token) return
+      const confirmed = confirm('检测到分享链接，是否导入相关的 schema 和 JSON 文件？')
+      if (!confirmed) return
+      const payload = await decompressToken(token)
+      if (!payload) {
+        ui.showStatus('分享链接无效或损坏', 'error')
+        return
+      }
+      const ok = await appStore.addSchema(payload.schema.name, payload.schema.content)
+      if (!ok) {
+        ui.showStatus('导入 schema 失败', 'error')
+        return
+      }
+      const importedSchemaName = payload.schema.name.endsWith('.json') ? payload.schema.name : payload.schema.name + '.json'
+      const schema = appStore.schemas.find(s => s.name === importedSchemaName)
+      if (!schema) return
+      for (const f of payload.files) {
+        const exists = schema.associatedFiles.some(x => x.name === f.name)
+        const fileObj = {
+          name: f.name,
+          path: `import://${schema.name}/${f.name}`,
+          content: f.content,
+          isValid: true,
+          errors: [] as any[]
+        }
+        if (!exists) {
+          schema.associatedFiles.push(fileObj)
+        }
+        const idx = appStore.jsonFiles.findIndex(x => x.path === fileObj.path)
+        if (idx === -1) appStore.jsonFiles.push(fileObj)
+        else appStore.jsonFiles[idx] = fileObj
+      }
+      await appStore.saveSchemaAssociations()
+      ui.showStatus('导入成功', 'success')
+    } catch {}
+  }
+  document.addEventListener('paste', handlePaste as EventListener)
+  
+  // Remove on unmount
+  onUnmounted(() => {
+    document.removeEventListener('paste', handlePaste as EventListener)
+  })
 })
 
 onUnmounted(() => {

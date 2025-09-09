@@ -9,6 +9,7 @@
     <template v-if="contextType === 'schema'">
       <div class="context-menu-item" @click="handleViewSchema">View Schema</div>
       <div class="context-menu-item" @click="handleEditSchema">Edit Schema</div>
+      <div class="context-menu-item" @click="handleShareSchema">Share...</div>
       <div class="context-menu-separator"></div>
       <div class="context-menu-item" @click="handleDeleteSchema">Delete Schema</div>
     </template>
@@ -73,6 +74,15 @@ function handleViewSchema() {
     appStore.setCurrentSchema(currentSchema.value)
     ui.setSchemaViewMode(true)
     ui.showStatus(`Viewing schema: ${currentSchema.value.name}`, 'info')
+  }
+  hideContextMenu()
+}
+function handleShareSchema() {
+  if (currentSchema.value) {
+    const evt = new CustomEvent('show-share-schema-popup', {
+      detail: { schema: currentSchema.value }
+    })
+    document.dispatchEvent(evt)
   }
   hideContextMenu()
 }
