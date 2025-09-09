@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container" v-if="!ui.isMobile">
     <!-- Left Panel - Schema Management -->
     <AppSidebar />
     
@@ -30,6 +30,9 @@
     <!-- File Selector Popup for Diff (disabled on mobile view-only) -->
     <FileSelectorPopup v-if="!ui.isMobile" />
   </div>
+  <div v-else class="app-container">
+    <MobileFriendly />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -43,6 +46,7 @@ import AddFilePopup from '@/components/AddFilePopup.vue'
 import FileSelectorPopup from '@/components/FileSelectorPopup.vue'
 import { useAppStore } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
+import MobileFriendly from '@/components/MobileFriendly.vue'
 
 const appStore = useAppStore()
 const ui = useUIStore()
