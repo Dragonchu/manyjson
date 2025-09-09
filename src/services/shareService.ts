@@ -16,9 +16,20 @@ export interface SharePayload {
 }
 
 // Lazy import to avoid bundling if unused in some targets
-async function getCompressor() {
-  const mod = await import('lz-string')
-  return mod
+async function getCompressor(): Promise<{
+  compressToEncodedURIComponent: (input: string) => string
+  decompressFromEncodedURIComponent: (input: string) => string | null
+}> {
+  const mod: any = await import('lz-string')
+  const compress = mod?.compressToEncodedURIComponent || mod?.default?.compressToEncodedURIComponent
+  const decompress = mod?.decompressFromEncodedURIComponent || mod?.default?.decompressFromEncodedURIComponent
+  if (typeof compress !== 'function' || typeof decompress !== 'function') {
+    throw new Error('lz-string methods not available')
+  }
+  return {
+    compressToEncodedURIComponent: compress,
+    decompressFromEncodedURIComponent: decompress
+  }
 }
 
 export async function createSharePayload(schema: SchemaInfo, files: JsonFile[]): Promise<SharePayload> {
@@ -45,27 +56,53 @@ export function buildShareLinkToken(compressed: string): string {
 
 export function buildShareLink(compressed: string): string {
   try {
+    const useHistory = (import.meta as any).env?.VITE_HISTORY_MODE === 'history'
+    if (useHistory) {
+      const u = new URL(location.href)
+      u.searchParams.set('share', compressed)
+      return u.toString()
+    }
+    // Hash history: keep router at root path and put token in hash query
     const base = `${location.origin}${location.pathname}${location.search || ''}`
-    return `${base}#${buildShareLinkToken(compressed)}`
+    return `${base}#/ ?${buildShareLinkToken(compressed)}`.replace(' /?', '/?')
   } catch {
-    return `#${buildShareLinkToken(compressed)}`
+    return `#/?${buildShareLinkToken(compressed)}`
   }
 }
 
 export function extractShareTokenFromUrl(url: string): string | null {
   try {
     const u = new URL(url)
-    const hash = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash
-    // Accept both hash and query param styles
-    if (hash.startsWith('share=')) return hash.slice('share='.length)
+    // 1) Normal query param
     const qp = u.searchParams.get('share')
-    return qp || null
+    if (qp) return qp
+    // 2) Hash part variants: '#share=...' or '#/?share=...' or '#/path?share=...'
+    const rawHash = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash
+    if (!rawHash) return null
+    if (rawHash.startsWith('share=')) {
+      return rawHash.slice('share='.length)
+    }
+    const qIndex = rawHash.indexOf('?')
+    if (qIndex >= 0) {
+      const qs = rawHash.slice(qIndex + 1)
+      const hsp = new URLSearchParams(qs)
+      const hv = hsp.get('share')
+      if (hv) return hv
+    }
+    return null
   } catch {
     // Fallback: parse as plain hash string
     const idx = url.indexOf('#')
     if (idx >= 0) {
       const hash = url.slice(idx + 1)
       if (hash.startsWith('share=')) return hash.slice('share='.length)
+      const qIdx = hash.indexOf('?')
+      if (qIdx >= 0) {
+        const qs = hash.slice(qIdx + 1)
+        const hsp = new URLSearchParams(qs)
+        const hv = hsp.get('share')
+        if (hv) return hv
+      }
     }
     // Also support raw token pasted (no URL)
     if (url.startsWith('share=')) return url.slice('share='.length)

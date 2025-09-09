@@ -285,21 +285,32 @@ async function tryImportFromTokenWithConfirm(token: string) {
 function cleanShareFromUrl() {
   try {
     const url = new URL(location.href)
-    let changed = false
+    let newUrl = url.toString()
     // Remove query param if present
     if (url.searchParams.has('share')) {
       url.searchParams.delete('share')
-      changed = true
+      newUrl = url.toString()
     }
-    // Handle hash-only token (e.g., #share=...)
-    const rawHash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
-    if (rawHash && rawHash.startsWith('share=')) {
-      // If app uses hash history, fallback to root '#/' after clearing
-      url.hash = '#/'
-      changed = true
+    // For hash modes like '#/?share=...' or '#/path?share=...'
+    const rawHash = url.hash
+    if (rawHash) {
+      const hash = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash
+      const qIndex = hash.indexOf('?')
+      if (qIndex >= 0) {
+        const path = hash.slice(0, qIndex) || '/'
+        const qs = new URLSearchParams(hash.slice(qIndex + 1))
+        if (qs.has('share')) {
+          qs.delete('share')
+          const cleanedHash = qs.toString() ? `#${path}?${qs.toString()}` : `#${path}`
+          newUrl = `${url.origin}${url.pathname}${url.search}${cleanedHash}`
+        }
+      } else if (hash.startsWith('share=')) {
+        // Fallback to root path when the entire hash is just the token
+        newUrl = `${url.origin}${url.pathname}${url.search}#/`
+      }
     }
-    if (changed) {
-      history.replaceState(null, '', url.toString())
+    if (newUrl !== location.href) {
+      history.replaceState(null, '', newUrl)
     }
   } catch {}
 }
