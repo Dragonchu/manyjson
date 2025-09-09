@@ -141,7 +141,30 @@ export const WebPlatformApis: PlatformApis = {
 	},
 
 	async deleteFile(): Promise<WriteResult> { return { success: true } },
-	async renameFile(_old, _new): Promise<WriteResult> { return { success: true } },
+	async renameFile(oldPath: string, newPath: string): Promise<WriteResult> {
+		// Web mode cannot truly rename files on disk with a bare file handle.
+		// We treat the name component of our fs:// URI as a virtual label and
+		// simply return a new URI that preserves the same handle id.
+		try {
+			const oldParsed = parseFsUri(oldPath)
+			const newParsed = parseFsUri(newPath)
+			if (!oldParsed || !newParsed) {
+				return { success: false, error: 'Unsupported path in web mode' }
+			}
+			// Ensure we are renaming the same file handle (no moves allowed)
+			if (oldParsed.id !== newParsed.id) {
+				return { success: false, error: 'Renaming must stay within the original folder' }
+			}
+			// Validate the handle still exists
+			if (!handleRegistry.has(oldParsed.id)) {
+				return { success: false, error: 'File handle not found (permission not granted or expired)' }
+			}
+			// Virtual rename succeeds by returning the new URI
+			return { success: true, filePath: newPath }
+		} catch (e: any) {
+			return { success: false, error: String(e) }
+		}
+	},
 	async copyFile(_src, _dst): Promise<WriteResult> { return { success: true } },
 	async getFileStats() { return { success: false, error: 'getFileStats not available in web mode' } },
 	async listDirectory(_dir): Promise<{ success: boolean; entries?: ListDirectoryEntry[]; error?: string }> { return { success: false, error: 'listDirectory not available in web mode' } },

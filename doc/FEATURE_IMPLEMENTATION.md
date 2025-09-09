@@ -187,3 +187,21 @@ Potential improvements that could be added:
 ### 已知限制
 - 文件句柄仅在当前会话有效，刷新后需重新授权；我们用 `localStorage` 记住元信息，但不储存句柄。
 - `listSchemaJsonFiles` 在纯 Web 下仍为空（未实现跨目录枚举）。可进一步扩展为选择目录并缓存句柄。
+
+## 任务总纲（LC-90 修复 Web 模式无法重命名文件名）
+
+### 问题
+Web 平台 `src/platform/web.ts` 中 `renameFile` 为占位实现，仅返回 `{ success: true }`，未返回 `filePath`。而前端 `useInlineRename.confirmRename` 依赖 `result.filePath` 更新 store，于是产生 “Failed to rename file: Unknown error”。
+
+### 修复方案
+- 在 Web 层补全 `renameFile(oldPath, newPath)` 的虚拟改名实现：
+  - 解析 `fs://<id>/<name>` URI，校验两端 `id` 相同（同一文件句柄内改名，禁止移动）。
+  - 校验句柄仍存在于内存注册表。
+  - 返回 `{ success: true, filePath: newPath }`，以新名称的 URI 作为结果。
+
+### 影响范围
+- UI 侧不变：`useInlineRename` 在成功后以返回的 `filePath` 更新 `appStore.renameJsonFile`。
+- 桌面端不受影响，仍由 IPC 真正改名。
+
+### 限制说明
+浏览器端并未真正修改磁盘上的文件名；该实现仅在应用内部“重命名”引用的虚拟路径标签，符合 Web 模式的能力边界。
