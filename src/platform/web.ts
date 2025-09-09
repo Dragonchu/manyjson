@@ -143,24 +143,39 @@ export const WebPlatformApis: PlatformApis = {
 	async deleteFile(): Promise<WriteResult> { return { success: true } },
 	async renameFile(oldPath: string, newPath: string): Promise<WriteResult> {
 		// Web mode cannot truly rename files on disk with a bare file handle.
-		// We treat the name component of our fs:// URI as a virtual label and
-		// simply return a new URI that preserves the same handle id.
+		// Implement virtual rename for supported schemes.
 		try {
-			const oldParsed = parseFsUri(oldPath)
-			const newParsed = parseFsUri(newPath)
-			if (!oldParsed || !newParsed) {
-				return { success: false, error: 'Unsupported path in web mode' }
+			// Case 1: fs://<id>/<name> — must keep same id
+			const oldFs = parseFsUri(oldPath)
+			const newFs = parseFsUri(newPath)
+			if (oldFs || newFs) {
+				if (!oldFs || !newFs) return { success: false, error: 'Unsupported path in web mode' }
+				if (oldFs.id !== newFs.id) return { success: false, error: 'Renaming must stay within the original folder' }
+				if (!handleRegistry.has(oldFs.id)) return { success: false, error: 'File handle not found (permission not granted or expired)' }
+				return { success: true, filePath: newPath }
 			}
-			// Ensure we are renaming the same file handle (no moves allowed)
-			if (oldParsed.id !== newParsed.id) {
-				return { success: false, error: 'Renaming must stay within the original folder' }
+
+			// Case 2: structured://<schemaName>/<fileName>
+			if (oldPath.startsWith('structured://') && newPath.startsWith('structured://')) {
+				const getDir = (p: string) => p.slice(0, p.lastIndexOf('/'))
+				if (getDir(oldPath) !== getDir(newPath)) {
+					return { success: false, error: 'Renaming must stay within the original folder' }
+				}
+				return { success: true, filePath: newPath }
 			}
-			// Validate the handle still exists
-			if (!handleRegistry.has(oldParsed.id)) {
-				return { success: false, error: 'File handle not found (permission not granted or expired)' }
+
+			// Case 3: mock:// or other virtual schemes — allow rename within same directory part
+			const schemeMatchOld = oldPath.match(/^([a-z]+):\/\//)
+			const schemeMatchNew = newPath.match(/^([a-z]+):\/\//)
+			if (schemeMatchOld && schemeMatchNew && schemeMatchOld[1] === schemeMatchNew[1]) {
+				const getDir = (p: string) => p.slice(0, p.lastIndexOf('/'))
+				if (getDir(oldPath) !== getDir(newPath)) {
+					return { success: false, error: 'Renaming must stay within the original folder' }
+				}
+				return { success: true, filePath: newPath }
 			}
-			// Virtual rename succeeds by returning the new URI
-			return { success: true, filePath: newPath }
+
+			return { success: false, error: 'Unsupported path in web mode' }
 		} catch (e: any) {
 			return { success: false, error: String(e) }
 		}
