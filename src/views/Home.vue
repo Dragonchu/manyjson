@@ -1,28 +1,37 @@
 <template>
-  <div class="app-container">
+  <div class="app-container" v-if="!ui.isMobile">
     <!-- Left Panel - Schema Management -->
     <AppSidebar />
     
     <!-- Resize Handle -->
-    <div class="resize-handle" id="leftResize" @mousedown="startLeftResize" @dblclick="toggleLeftCollapse"></div>
+    <div 
+      v-if="!ui.isMobile" 
+      class="resize-handle" 
+      id="leftResize" 
+      @mousedown="startLeftResize" 
+      @dblclick="toggleLeftCollapse"
+    ></div>
     
     <!-- Middle Panel - JSON Files List -->
     <MiddlePanel />
     
     <!-- Resize Handle -->
-    <div class="resize-handle" id="middleResize"></div>
+    <div v-if="!ui.isMobile" class="resize-handle" id="middleResize"></div>
     
     <!-- Right Panel - JSON Content View -->
     <RightPanel />
     
-    <!-- Context Menu -->
-    <ContextMenu />
+    <!-- Context Menu (disabled on mobile view-only) -->
+    <ContextMenu v-if="!ui.isMobile" />
     
-    <!-- Add File Popup -->
-    <AddFilePopup />
+    <!-- Add File Popup (disabled on mobile view-only) -->
+    <AddFilePopup v-if="!ui.isMobile" />
     
-    <!-- File Selector Popup for Diff -->
-    <FileSelectorPopup />
+    <!-- File Selector Popup for Diff (disabled on mobile view-only) -->
+    <FileSelectorPopup v-if="!ui.isMobile" />
+  </div>
+  <div v-else class="app-container">
+    <MobileFriendly />
   </div>
 </template>
 
@@ -37,6 +46,7 @@ import AddFilePopup from '@/components/AddFilePopup.vue'
 import FileSelectorPopup from '@/components/FileSelectorPopup.vue'
 import { useAppStore } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
+import MobileFriendly from '@/components/MobileFriendly.vue'
 
 const appStore = useAppStore()
 const ui = useUIStore()

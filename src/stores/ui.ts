@@ -11,6 +11,9 @@ export const useUIStore = defineStore('ui', () => {
   const isEditingSchema = ref(false)
   const isDiffMode = ref(false)
 
+  // Responsive
+  const isMobile = ref(false)
+
   // Layout - sidebar
   const leftSidebarWidth = ref<number>(300)
   const leftSidebarCollapsed = ref<boolean>(false)
@@ -175,6 +178,17 @@ export const useUIStore = defineStore('ui', () => {
     }
   }
 
+  // Responsive initialization
+  function initializeResponsive() {
+    const update = () => {
+      try {
+        isMobile.value = window.innerWidth <= 767
+      } catch {}
+    }
+    update()
+    window.addEventListener('resize', update)
+  }
+
   // Watch for theme changes
   watch(currentTheme, () => {
     applyTheme()
@@ -201,6 +215,7 @@ export const useUIStore = defineStore('ui', () => {
     isViewingSchema,
     isEditingSchema,
     isDiffMode,
+    isMobile,
     leftSidebarWidth,
     leftSidebarCollapsed,
     statusMessage,
@@ -222,6 +237,7 @@ export const useUIStore = defineStore('ui', () => {
     initializeTheme,
     initializeLayout,
     initializeKeyboardShortcuts,
+    initializeResponsive,
   }
 })
 

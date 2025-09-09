@@ -11,8 +11,8 @@
         </div>
         <ThemeToggle />
         <div class="schema-actions">
-          <button class="apple-btn tinted small" @click="handleAddSchema">Add</button>
-          <button class="apple-btn bordered small" @click="handleImportSchema">Import</button>
+          <button class="apple-btn tinted small" @click="handleAddSchema" v-if="!ui.isMobile">Add</button>
+          <button class="apple-btn bordered small" @click="handleImportSchema" v-if="!ui.isMobile">Import</button>
           <button class="apple-btn bordered small" @click="handleRefresh">Refresh</button>
         </div>
       </div>
@@ -24,7 +24,7 @@
         class="apple-list-item schema"
         :class="{ selected: appStore.currentSchema?.path === schema.path }"
         @click="selectSchema(schema)"
-        @contextmenu.prevent="showContextMenu($event, schema)"
+        @contextmenu.prevent="ui.isMobile ? undefined : showContextMenu($event, schema)"
       >
         <div class="schema-content">
           <span class="schema-icon">📄</span>
@@ -61,6 +61,9 @@ const router = useRouter()
 const runtime = getPlatformRuntime()
 
 const leftPanelStyle = computed(() => {
+  if (ui.isMobile) {
+    return { width: '100%', minWidth: 'unset', maxWidth: 'unset' }
+  }
   if (ui.leftSidebarCollapsed) {
     return { width: '48px', minWidth: '48px' }
   }

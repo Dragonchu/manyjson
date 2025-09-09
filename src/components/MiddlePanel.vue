@@ -4,7 +4,7 @@
       <div class="header-top">
         <div class="middle-panel-title">Associated JSON Files</div>
         <button 
-          v-if="appStore.currentSchema" 
+          v-if="appStore.currentSchema && !ui.isMobile" 
           class="apple-btn tinted small"
           @click="openAddFilePopup"
           title="Add JSON file"
@@ -32,8 +32,8 @@
         }"
         :data-file-path="file.path"
         @click="selectFile(file)"
-        @contextmenu.prevent="showContextMenu($event, file)"
-        @dblclick="startInlineRename(file)"
+        @contextmenu.prevent="ui.isMobile ? undefined : showContextMenu($event, file)"
+        @dblclick="ui.isMobile ? undefined : startInlineRename(file)"
       >
         <!-- Normal display mode -->
         <div v-if="!inlineRename.isEditing(file)" class="json-file-name" :title="`${file.name}\n\nDouble-click or press F2 to rename`">
@@ -175,6 +175,9 @@ function handleRenameEvent(event: CustomEvent) {
 
 // Handle F2 key for rename
 function handleKeyDown(event: KeyboardEvent) {
+  if (ui.isMobile) {
+    return
+  }
   if (event.key === 'F2' && appStore.currentJsonFile && !inlineRename.editingFile.value) {
     event.preventDefault()
     startInlineRename(appStore.currentJsonFile)

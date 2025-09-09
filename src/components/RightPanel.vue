@@ -36,7 +36,7 @@
             {{ appStore.currentJsonFile.isValid ? 'Valid JSON' : `${appStore.currentJsonFile.errors.length} validation errors` }}
           </span>
         </div>
-        <div class="panel-actions" v-if="ui.isEditingSchema && appStore.currentSchema">
+        <div class="panel-actions" v-if="ui.isEditingSchema && appStore.currentSchema && !ui.isMobile">
           <button class="apple-btn filled small icon-only" @click="saveSchemaChanges" title="Save Schema">
             <SaveIcon />
           </button>
@@ -53,13 +53,13 @@
           <button class="apple-btn tinted small icon-only" @click="copyToClipboard" title="Copy JSON">
             <CopyIcon />
           </button>
-          <button class="apple-btn bordered small icon-only" @click="toggleEditMode" title="Edit JSON" v-if="!ui.isEditMode">
+          <button class="apple-btn bordered small icon-only" @click="toggleEditMode" title="Edit JSON" v-if="!ui.isEditMode && !ui.isMobile">
             <EditIcon />
           </button>
-          <button class="apple-btn filled small icon-only" @click="saveChanges" title="Save Changes" v-if="ui.isEditMode">
+          <button class="apple-btn filled small icon-only" @click="saveChanges" title="Save Changes" v-if="ui.isEditMode && !ui.isMobile">
             <SaveIcon />
           </button>
-          <button class="apple-btn plain small icon-only" @click="cancelEdit" title="Cancel Edit" v-if="ui.isEditMode">
+          <button class="apple-btn plain small icon-only" @click="cancelEdit" title="Cancel Edit" v-if="ui.isEditMode && !ui.isMobile">
             <CancelIcon />
           </button>
         </div>
@@ -67,11 +67,11 @@
     </div>
     <div class="json-content">
       <!-- Diff Viewer -->
-      <JsonDiffViewer v-if="ui.isDiffMode" />
+      <JsonDiffViewer v-if="ui.isDiffMode && !ui.isMobile" />
 
       <!-- Schema Editor -->
       <AdvancedJsonEditor
-        v-else-if="ui.isEditingSchema && appStore.currentSchema"
+        v-else-if="ui.isEditingSchema && appStore.currentSchema && !ui.isMobile"
         v-model="editSchemaContent"
         placeholder="Enter schema JSON..."
         @validation-change="handleSchemaValidationChange"
@@ -114,7 +114,7 @@
 
       <!-- JSON Editor -->
       <AdvancedJsonEditor
-        v-else-if="appStore.currentJsonFile && ui.isEditMode"
+        v-else-if="appStore.currentJsonFile && ui.isEditMode && !ui.isMobile"
         v-model="editContent"
         :schema="appStore.currentSchema?.content"
         placeholder="Enter JSON content..."
