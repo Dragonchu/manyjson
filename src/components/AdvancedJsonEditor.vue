@@ -15,8 +15,7 @@ import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 import { basicSetup } from 'codemirror'
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import Ajv from 'ajv'
-import addFormats from 'ajv-formats'
+import { getSharedAjv } from '@/services/validationService'
 import { useUIStore } from '@/stores/ui'
 
 interface Props {
@@ -42,13 +41,8 @@ const editorRef = ref<HTMLElement>()
 let editorView: EditorView | null = null
 const uiStore = useUIStore()
 
-// Initialize AJV instance
-const ajv = new Ajv({ 
-  allErrors: true, 
-  verbose: true,
-  strict: false 
-})
-addFormats(ajv)
+// Use the shared AJV singleton
+const ajv = getSharedAjv()
 
 // Cache compiled validator for performance
 let compiledValidator: any = null

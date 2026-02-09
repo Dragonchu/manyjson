@@ -348,13 +348,13 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
 }
 
 .dialog {
   background: var(--apple-bg-secondary);
   border: 1px solid var(--linear-border, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   width: 600px;
   max-width: 90vw;
   max-height: 90vh;

@@ -1,37 +1,46 @@
 <template>
-  <div class="middle-panel">
+  <section class="middle-panel" aria-label="JSON files">
     <div class="middle-panel-header">
       <div class="header-top">
-        <div class="middle-panel-title">Associated JSON Files</div>
-        <button 
-          v-if="appStore.currentSchema && !ui.isMobile" 
+        <div class="middle-panel-title" id="file-list-label">Associated JSON Files</div>
+        <button
+          v-if="appStore.currentSchema && !ui.isMobile"
           class="apple-btn tinted small"
           @click="openAddFilePopup"
-          title="Add JSON file"
+          aria-label="Add JSON file to current schema"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
           Add
         </button>
       </div>
-      <div class="schema-info">
+      <div class="schema-info" role="status" aria-live="polite">
         {{ appStore.currentSchema ? `Schema: ${appStore.currentSchema.name}` : 'Select a schema to view associated files' }}
       </div>
     </div>
-    <div class="json-files-list">
+    <div
+      class="json-files-list"
+      role="listbox"
+      aria-labelledby="file-list-label"
+      @keydown="handleFileListKeydown"
+    >
       <div
-        v-for="file in appStore.currentSchemaFiles"
+        v-for="(file, index) in appStore.currentSchemaFiles"
         :key="file.path"
         class="json-file-card"
-        :class="{ 
+        :class="{
           selected: appStore.currentJsonFile?.path === file.path,
           invalid: !file.isValid,
           editing: inlineRename.isEditing(file)
         }"
+        role="option"
+        :aria-selected="appStore.currentJsonFile?.path === file.path"
+        :tabindex="appStore.currentJsonFile?.path === file.path ? 0 : -1"
         :data-file-path="file.path"
         @click="selectFile(file)"
+        @keydown.enter="selectFile(file)"
         @contextmenu.prevent="ui.isMobile ? undefined : showContextMenu($event, file)"
         @dblclick="ui.isMobile ? undefined : startInlineRename(file)"
       >
@@ -39,49 +48,59 @@
         <div v-if="!inlineRename.isEditing(file)" class="json-file-name" :title="`${file.name}\n\nDouble-click or press F2 to rename`">
           {{ file.name }}
         </div>
-        
+
         <!-- Inline edit mode -->
         <div v-else class="json-file-name-edit">
+          <label :for="`rename-${file.path}`" class="sr-only">Rename file</label>
           <input
+            :id="`rename-${file.path}`"
             type="text"
             class="apple-input inline-rename-input"
             :class="{ 'invalid-input': !inlineRename.isValidName.value }"
             :value="inlineRename.editingName.value"
+            :aria-invalid="!inlineRename.isValidName.value"
+            :aria-describedby="!inlineRename.isValidName.value ? `rename-error-${file.path}` : undefined"
             @input="inlineRename.updateEditingName(($event.target as HTMLInputElement).value)"
             @keydown.enter="handleRenameConfirm"
             @keydown.escape="inlineRename.cancelRename()"
             @blur="handleRenameBlur"
             @click.stop
           />
-          <div v-if="!inlineRename.isValidName.value" class="validation-error">
+          <div
+            v-if="!inlineRename.isValidName.value"
+            :id="`rename-error-${file.path}`"
+            class="validation-error"
+            role="alert"
+          >
             {{ inlineRename.validationError.value }}
           </div>
         </div>
-        
+
         <div class="json-file-status">
-          <div 
-            class="status-icon" 
+          <div
+            class="status-icon"
             :class="{ valid: file.isValid, invalid: !file.isValid }"
+            :aria-label="file.isValid ? 'Valid' : 'Invalid'"
           ></div>
           <span :class="{ 'status-valid': file.isValid, 'status-invalid': !file.isValid }">
             {{ file.isValid ? 'Valid' : `Invalid (${file.errors.length} errors)` }}
           </span>
         </div>
       </div>
-      
-      <div v-if="!appStore.currentSchema" class="empty-state">
-        <div class="empty-state-icon">📄</div>
+
+      <div v-if="!appStore.currentSchema" class="empty-state" role="status">
+        <div class="empty-state-icon" aria-hidden="true">📄</div>
         <div class="empty-state-title">No Schema Selected</div>
         <div class="empty-state-description">Select a JSON Schema from the left panel to view associated JSON files</div>
       </div>
-      
-      <div v-else-if="appStore.currentSchemaFiles.length === 0" class="empty-state">
-        <div class="empty-state-icon">📄</div>
+
+      <div v-else-if="appStore.currentSchemaFiles.length === 0" class="empty-state" role="status">
+        <div class="empty-state-icon" aria-hidden="true">📄</div>
         <div class="empty-state-title">No JSON Files</div>
         <div class="empty-state-description">No JSON files are associated with this schema</div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -182,6 +201,33 @@ function handleKeyDown(event: KeyboardEvent) {
     event.preventDefault()
     startInlineRename(appStore.currentJsonFile)
   }
+}
+
+/** Arrow-key navigation within the file list */
+function handleFileListKeydown(event: KeyboardEvent) {
+  const files = appStore.currentSchemaFiles
+  if (files.length === 0) return
+
+  const currentIndex = files.findIndex(f => f.path === appStore.currentJsonFile?.path)
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    const next = currentIndex < files.length - 1 ? currentIndex + 1 : 0
+    selectFile(files[next])
+    focusFileItem(next)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    const prev = currentIndex > 0 ? currentIndex - 1 : files.length - 1
+    selectFile(files[prev])
+    focusFileItem(prev)
+  }
+}
+
+function focusFileItem(index: number) {
+  const list = document.querySelector('.json-files-list')
+  if (!list) return
+  const items = list.querySelectorAll('[role="option"]')
+  if (items[index]) (items[index] as HTMLElement).focus()
 }
 
 onMounted(() => {
@@ -346,7 +392,7 @@ onUnmounted(() => {
   color: white;
   font-size: var(--text-sm); /* 12px */
   border-radius: var(--radius-md); /* 8px */
-  z-index: 10;
+  z-index: var(--z-raised);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

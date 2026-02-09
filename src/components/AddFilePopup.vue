@@ -276,7 +276,7 @@ watch(editContent, validateEditContent)
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   opacity: 0;
   transition: opacity 0.3s var(--apple-ease);
 }

@@ -1,37 +1,40 @@
 <template>
-  <div 
-    class="context-menu" 
+  <div
+    class="context-menu"
     ref="contextMenuRef"
     :style="{ left: position.x + 'px', top: position.y + 'px' }"
     v-show="isVisible"
+    role="menu"
+    :aria-label="contextType === 'schema' ? 'Schema actions' : 'File actions'"
+    @keydown="handleMenuKeydown"
   >
     <!-- Schema context menu items -->
     <template v-if="contextType === 'schema'">
-      <div class="context-menu-item" @click="handleViewSchema">View Schema</div>
-      <div class="context-menu-item" @click="handleEditSchema">Edit Schema</div>
-      <div class="context-menu-item" @click="handleShareSchema">Share...</div>
-      <div class="context-menu-separator"></div>
-      <div class="context-menu-item" @click="handleDeleteSchema">Delete Schema</div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleViewSchema">View Schema</div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleEditSchema">Edit Schema</div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleShareSchema">Share...</div>
+      <div class="context-menu-separator" role="separator"></div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleDeleteSchema">Delete Schema</div>
     </template>
-    
+
     <!-- File context menu items -->
     <template v-if="contextType === 'file'">
-      <div class="context-menu-item" @click="handleCopyFile">Copy File</div>
-      <div class="context-menu-separator"></div>
-      <div class="context-menu-item" @click="handleViewFile">View File</div>
-      <div class="context-menu-item" @click="handleEditFile">Edit File</div>
-      <div class="context-menu-separator"></div>
-      <div class="context-menu-item" @click="handleDiffWith">Diff with...</div>
-      <div class="context-menu-separator"></div>
-      <div class="context-menu-item" @click="handleRenameFile">Rename File</div>
-      <div class="context-menu-separator"></div>
-      <div class="context-menu-item" @click="handleDeleteFile">Delete File</div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleCopyFile">Copy File</div>
+      <div class="context-menu-separator" role="separator"></div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleViewFile">View File</div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleEditFile">Edit File</div>
+      <div class="context-menu-separator" role="separator"></div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleDiffWith">Diff with...</div>
+      <div class="context-menu-separator" role="separator"></div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleRenameFile">Rename File</div>
+      <div class="context-menu-separator" role="separator"></div>
+      <div class="context-menu-item" role="menuitem" tabindex="-1" @click="handleDeleteFile">Delete File</div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAppStore, type SchemaInfo, type JsonFile } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 
@@ -60,7 +63,12 @@ function showContextMenu(event: CustomEvent) {
   
   position.value = { x: mouseEvent.clientX, y: mouseEvent.clientY }
   isVisible.value = true
-  console.log('Context menu should be visible:', { isVisible: isVisible.value, contextType: contextType.value, fileName: file?.name })
+
+  // Auto-focus first menu item for keyboard navigation
+  nextTick(() => {
+    const firstItem = contextMenuRef.value?.querySelector('[role="menuitem"]') as HTMLElement | null
+    firstItem?.focus()
+  })
 }
 
 function hideContextMenu() {
@@ -187,6 +195,33 @@ function handleRenameFile() {
   hideContextMenu()
 }
 
+/** Keyboard navigation within context menu (arrows, Escape) */
+function handleMenuKeydown(event: KeyboardEvent) {
+  const items = contextMenuRef.value?.querySelectorAll('[role="menuitem"]') as NodeListOf<HTMLElement> | undefined
+  if (!items || items.length === 0) return
+
+  const focused = document.activeElement as HTMLElement
+  const currentIndex = Array.from(items).indexOf(focused)
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0
+    items[next].focus()
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1
+    items[prev].focus()
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    hideContextMenu()
+  } else if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    if (focused && focused.classList.contains('context-menu-item')) {
+      focused.click()
+    }
+  }
+}
+
 function handleClickOutside(event: MouseEvent) {
   if (contextMenuRef.value && !contextMenuRef.value.contains(event.target as Node)) {
     hideContextMenu()
@@ -213,7 +248,7 @@ onUnmounted(() => {
   box-shadow: var(--apple-shadow-lg);
   padding: var(--spacing-sm) 0; /* 8px 0 */
   min-width: 180px;
-  z-index: 1000;
+  z-index: var(--z-dropdown);
   backdrop-filter: blur(20px); /* Apple-style backdrop blur */
 }
 

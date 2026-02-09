@@ -1,25 +1,31 @@
 <template>
   <div class="app-container" v-if="!ui.isMobile">
     <!-- Left Panel - Schema Management -->
-    <AppSidebar />
-    
+    <ErrorBoundary>
+      <AppSidebar />
+    </ErrorBoundary>
+
     <!-- Resize Handle -->
-    <div 
-      v-if="!ui.isMobile" 
-      class="resize-handle" 
-      id="leftResize" 
-      @mousedown="startLeftResize" 
+    <div
+      v-if="!ui.isMobile"
+      class="resize-handle"
+      id="leftResize"
+      @mousedown="startLeftResize"
       @dblclick="toggleLeftCollapse"
     ></div>
-    
+
     <!-- Middle Panel - JSON Files List -->
-    <MiddlePanel />
-    
+    <ErrorBoundary>
+      <MiddlePanel />
+    </ErrorBoundary>
+
     <!-- Resize Handle -->
     <div v-if="!ui.isMobile" class="resize-handle" id="middleResize"></div>
-    
+
     <!-- Right Panel - JSON Content View -->
-    <RightPanel />
+    <ErrorBoundary>
+      <RightPanel />
+    </ErrorBoundary>
     
     <!-- Context Menu (disabled on mobile view-only) -->
     <ContextMenu v-if="!ui.isMobile" />
@@ -44,6 +50,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppSidebar from '@/components/AppSidebar.vue'
 import MiddlePanel from '@/components/MiddlePanel.vue'
 import RightPanel from '@/components/RightPanel.vue'
+import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import AddFilePopup from '@/components/AddFilePopup.vue'
 import FileSelectorPopup from '@/components/FileSelectorPopup.vue'
@@ -52,11 +59,60 @@ import { useUIStore } from '@/stores/ui'
 import MobileFriendly from '@/components/MobileFriendly.vue'
 import ShareSchemaPopup from '@/components/ShareSchemaPopup.vue'
 import { extractShareTokenFromUrl, decompressToken } from '@/services/shareService'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
 const appStore = useAppStore()
 const ui = useUIStore()
 const route = useRoute()
 const router = useRouter()
+
+// ── Centralized keyboard shortcuts ──────────────────────────────
+useKeyboardShortcuts([
+  {
+    id: 'theme-toggle',
+    key: 't',
+    cmdOrCtrl: true,
+    shift: true,
+    description: 'Toggle theme (light/dark/auto)',
+    handler: () => { ui.toggleTheme() },
+  },
+  {
+    id: 'new-schema',
+    key: 'n',
+    cmdOrCtrl: true,
+    description: 'Add new schema',
+    handler: () => {
+      document.dispatchEvent(new CustomEvent('trigger-add-schema'))
+    },
+  },
+  {
+    id: 'save',
+    key: 's',
+    cmdOrCtrl: true,
+    description: 'Save current file or schema',
+    handler: () => {
+      document.dispatchEvent(new CustomEvent('trigger-save'))
+    },
+  },
+  {
+    id: 'close-diff',
+    key: 'Escape',
+    description: 'Exit diff / edit mode',
+    handler: () => {
+      if (ui.isDiffMode) {
+        ui.setDiffMode(false)
+        return
+      }
+      if (ui.isEditMode) {
+        ui.setEditMode(false)
+        return
+      }
+      if (ui.isEditingSchema) {
+        ui.setSchemaEditMode(false)
+      }
+    },
+  },
+])
 
 let isResizingLeft = false
 let startX = 0
@@ -333,7 +389,7 @@ function cleanShareFromUrl() {
   cursor: col-resize;
   position: relative;
   transition: var(--apple-transition-fast);
-  z-index: 10;
+  z-index: var(--z-raised);
 }
 
 .resize-handle:hover {

@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
 import { ValidationService } from '@/services/validationService'
@@ -153,6 +153,17 @@ const ui = useUIStore()
 const validationService = new ValidationService()
 const fileService = new FileService()
 const { copyText, runtime } = useCapability()
+
+// Listen for global Cmd/Ctrl+S shortcut
+const onTriggerSave = () => {
+  if (ui.isEditMode && appStore.currentJsonFile) {
+    saveChanges()
+  } else if (ui.isEditingSchema && appStore.currentSchema) {
+    saveSchemaChanges()
+  }
+}
+onMounted(() => { document.addEventListener('trigger-save', onTriggerSave) })
+onUnmounted(() => { document.removeEventListener('trigger-save', onTriggerSave) })
 const editContent = ref('')
 const editErrors = ref<any[]>([])
 const editSchemaContent = ref('')
