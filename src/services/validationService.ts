@@ -6,12 +6,27 @@ export interface ValidationResult {
   errors: any[]
 }
 
+/**
+ * Shared AJV singleton instance.
+ *
+ * Re-use this across the entire application to avoid redundant schema
+ * compilation and memory overhead from multiple AJV instances.
+ */
+let _sharedAjv: Ajv | null = null
+
+export function getSharedAjv(): Ajv {
+  if (!_sharedAjv) {
+    _sharedAjv = new Ajv({ allErrors: true, verbose: true, strict: false })
+    addFormats(_sharedAjv)
+  }
+  return _sharedAjv
+}
+
 export class ValidationService {
   private ajv: Ajv
 
   constructor() {
-    this.ajv = new Ajv({ allErrors: true })
-    addFormats(this.ajv)
+    this.ajv = getSharedAjv()
   }
 
   validateSchema(schema: any): ValidationResult {

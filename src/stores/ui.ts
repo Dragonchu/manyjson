@@ -26,6 +26,17 @@ export const useUIStore = defineStore('ui', () => {
   const statusMessage = ref('')
   const statusType = ref<StatusType>('info')
 
+  // Error / status history (persisted in memory for current session)
+  interface StatusEntry {
+    id: number
+    message: string
+    type: StatusType
+    timestamp: number
+  }
+  let _nextId = 0
+  const statusHistory = ref<StatusEntry[]>([])
+  const MAX_HISTORY = 50
+
   // Diff mode data
   const diffSourceFile = ref<any>(null)
   const diffComparisonFile = ref<any>(null)
@@ -87,9 +98,29 @@ export const useUIStore = defineStore('ui', () => {
   function showStatus(message: string, type: StatusType = 'info') {
     statusMessage.value = message
     statusType.value = type
+
+    // Append to history
+    statusHistory.value.push({
+      id: _nextId++,
+      message,
+      type,
+      timestamp: Date.now(),
+    })
+    // Trim history
+    if (statusHistory.value.length > MAX_HISTORY) {
+      statusHistory.value = statusHistory.value.slice(-MAX_HISTORY)
+    }
+
     setTimeout(() => {
-      statusMessage.value = ''
+      // Only clear if still showing this exact message
+      if (statusMessage.value === message) {
+        statusMessage.value = ''
+      }
     }, 3000)
+  }
+
+  function clearStatusHistory() {
+    statusHistory.value = []
   }
 
   // Theme functions
@@ -194,20 +225,11 @@ export const useUIStore = defineStore('ui', () => {
     applyTheme()
   })
 
-  // Keyboard shortcut for theme switching (Cmd/Ctrl + Shift + T)
+  // Keyboard shortcut initialization (legacy — now handled by useKeyboardShortcuts composable)
   function initializeKeyboardShortcuts() {
-    const handleKeydown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'T') {
-        event.preventDefault()
-        toggleTheme()
-      }
-    }
-    
-    document.addEventListener('keydown', handleKeydown)
-    
-    return () => {
-      document.removeEventListener('keydown', handleKeydown)
-    }
+    // Shortcuts are now centrally managed via useKeyboardShortcuts composable in Home.vue
+    // This function is kept for backward compatibility but is a no-op.
+    return () => {}
   }
 
   return {
@@ -220,6 +242,8 @@ export const useUIStore = defineStore('ui', () => {
     leftSidebarCollapsed,
     statusMessage,
     statusType,
+    statusHistory,
+    clearStatusHistory,
     diffSourceFile,
     diffComparisonFile,
     theme,

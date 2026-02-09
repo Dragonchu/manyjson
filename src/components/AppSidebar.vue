@@ -1,52 +1,66 @@
 <template>
-  <div class="left-panel" :style="leftPanelStyle" :class="{ collapsed: ui.leftSidebarCollapsed }">
+  <nav class="left-panel" :style="leftPanelStyle" :class="{ collapsed: ui.leftSidebarCollapsed }" aria-label="Schema navigation">
     <div class="left-panel-header">
-      <div class="left-panel-title">JSON Schema Manager</div>
+      <div class="left-panel-title" id="schema-list-label">JSON Schema Manager</div>
       <div class="header-controls">
         <div class="collapse-row">
-          <button class="apple-btn plain small" @click="toggleCollapsed" :title="ui.leftSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
-            <span v-if="ui.leftSidebarCollapsed">⟩</span>
-            <span v-else>⟨</span>
+          <button
+            class="apple-btn plain small"
+            @click="toggleCollapsed"
+            :aria-label="ui.leftSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            :aria-expanded="!ui.leftSidebarCollapsed"
+          >
+            <span v-if="ui.leftSidebarCollapsed" aria-hidden="true">⟩</span>
+            <span v-else aria-hidden="true">⟨</span>
           </button>
         </div>
         <ThemeToggle />
-        <div class="schema-actions">
-          <button class="apple-btn tinted small" @click="handleAddSchema" v-if="!ui.isMobile">Add</button>
-          <button class="apple-btn bordered small" @click="handleImportSchema" v-if="!ui.isMobile">Import</button>
-          <button class="apple-btn bordered small" @click="handleRefresh">Refresh</button>
+        <div class="schema-actions" role="toolbar" aria-label="Schema actions">
+          <button class="apple-btn tinted small" @click="handleAddSchema" v-if="!ui.isMobile" aria-label="Add new schema">Add</button>
+          <button class="apple-btn bordered small" @click="handleImportSchema" v-if="!ui.isMobile" aria-label="Import schema from file">Import</button>
+          <button class="apple-btn bordered small" @click="handleRefresh" aria-label="Refresh schema list">Refresh</button>
         </div>
       </div>
     </div>
-    <div class="apple-list schema-tree">
+    <div
+      class="apple-list schema-tree"
+      role="listbox"
+      aria-labelledby="schema-list-label"
+      @keydown="handleSchemaListKeydown"
+    >
       <div
-        v-for="schema in appStore.schemas"
+        v-for="(schema, index) in appStore.schemas"
         :key="schema.path"
         class="apple-list-item schema"
         :class="{ selected: appStore.currentSchema?.path === schema.path }"
+        role="option"
+        :aria-selected="appStore.currentSchema?.path === schema.path"
+        :tabindex="appStore.currentSchema?.path === schema.path ? 0 : -1"
         @click="selectSchema(schema)"
+        @keydown.enter="selectSchema(schema)"
         @contextmenu.prevent="ui.isMobile ? undefined : showContextMenu($event, schema)"
       >
         <div class="schema-content">
-          <span class="schema-icon">📄</span>
+          <span class="schema-icon" aria-hidden="true">📄</span>
           <span class="schema-name">{{ schema.name }}</span>
         </div>
-        <div class="apple-disclosure-indicator"></div>
+        <div class="apple-disclosure-indicator" aria-hidden="true"></div>
       </div>
-      
-      <div v-if="appStore.schemas.length === 0" class="empty-state">
-        <div class="empty-state-icon">📁</div>
+
+      <div v-if="appStore.schemas.length === 0" class="empty-state" role="status">
+        <div class="empty-state-icon" aria-hidden="true">📁</div>
         <div class="empty-state-title">No Schemas</div>
         <div class="empty-state-description">Add JSON schemas to get started</div>
       </div>
     </div>
-    
+
     <!-- Add Schema Dialog -->
     <AddSchemaDialog ref="addSchemaDialog" />
-  </div>
+  </nav>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore, type SchemaInfo } from '@/stores/app'
 import { useUIStore } from '@/stores/ui'
@@ -59,6 +73,11 @@ const ui = useUIStore()
 const addSchemaDialog = ref<InstanceType<typeof AddSchemaDialog>>()
 const router = useRouter()
 const runtime = getPlatformRuntime()
+
+// Listen for global Cmd/Ctrl+N shortcut
+const onTriggerAddSchema = () => { handleAddSchema() }
+onMounted(() => { document.addEventListener('trigger-add-schema', onTriggerAddSchema) })
+onUnmounted(() => { document.removeEventListener('trigger-add-schema', onTriggerAddSchema) })
 
 const leftPanelStyle = computed(() => {
   if (ui.isMobile) {
@@ -154,6 +173,33 @@ function showContextMenu(event: MouseEvent, schema: SchemaInfo) {
 
 function toggleCollapsed() {
   ui.setLeftSidebarCollapsed(!ui.leftSidebarCollapsed)
+}
+
+/** Arrow-key navigation within the schema list */
+function handleSchemaListKeydown(event: KeyboardEvent) {
+  const schemas = appStore.schemas
+  if (schemas.length === 0) return
+
+  const currentIndex = schemas.findIndex(s => s.path === appStore.currentSchema?.path)
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    const next = currentIndex < schemas.length - 1 ? currentIndex + 1 : 0
+    selectSchema(schemas[next])
+    focusSchemaItem(next)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    const prev = currentIndex > 0 ? currentIndex - 1 : schemas.length - 1
+    selectSchema(schemas[prev])
+    focusSchemaItem(prev)
+  }
+}
+
+function focusSchemaItem(index: number) {
+  const list = document.querySelector('.schema-tree')
+  if (!list) return
+  const items = list.querySelectorAll('[role="option"]')
+  if (items[index]) (items[index] as HTMLElement).focus()
 }
 </script>
 

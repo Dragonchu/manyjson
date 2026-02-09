@@ -91,11 +91,27 @@
   --apple-font-primary: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
   --apple-font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'JetBrains Mono', monospace;
   
-  /* Animation */
+  /* Animation / Motion tokens */
   --apple-ease: cubic-bezier(0.23, 1, 0.32, 1);
-  --apple-transition: all 0.3s var(--apple-ease);
-  --apple-transition-fast: all 0.15s var(--apple-ease);
-  --apple-spring-duration: 400ms;
+  --apple-ease-in: cubic-bezier(0.42, 0, 1, 1);
+  --apple-ease-out: cubic-bezier(0, 0, 0.58, 1);
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-spring: 400ms;
+  --apple-transition: all var(--duration-normal) var(--apple-ease);
+  --apple-transition-fast: all var(--duration-fast) var(--apple-ease);
+
+  /* Z-index layer tokens */
+  --z-base: 0;
+  --z-raised: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 500;
+  --z-modal: 900;
+  --z-toast: 1000;
+  --z-tooltip: 1100;
   
   /* 8pt Grid System - Apple HIG Spacing Standards */
   --space-1: 4px;    /* 0.5 units */
@@ -1186,6 +1202,19 @@ body {
 
 .apple-segment.selected + .apple-segment {
   border-left-color: transparent;
+}
+
+/* Screen-reader only utility (visually hidden but accessible) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 /* Accessibility & Focus States */
